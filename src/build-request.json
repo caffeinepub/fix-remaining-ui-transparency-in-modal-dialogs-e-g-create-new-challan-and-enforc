@@ -1,0 +1,80 @@
+{
+  "kind": "build_request",
+  "title": "Bootstrap permanent admin Internet Identity so admin link never shows Approval Required",
+  "projectName": "Rentiq Udaipur",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-6",
+      "text": "Implement a persistent “bootstrap admin” mechanism so the first signed-in user who accesses the app from the admin hostname (rentiq-udaipur-x18.caffeine.xyz) is automatically granted admin permission in the backend, and is thereafter always treated as admin (no approval/permission screen needed for that user).",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "recent-messages"
+        ],
+        "quotes": [
+          "Please allow https://rentiq-udaipur-x18.caffeine.xyz/ Link as no permission",
+          "or always remember my internet id as admin",
+          "1. yes",
+          "build it"
+        ]
+      },
+      "acceptanceCriteria": [
+        "If there are currently zero admins in the backend access control state, the backend can persistently grant #admin permission to the caller when a dedicated bootstrap method is invoked.",
+        "After bootstrap, backend admin checks (e.g., ensureAdmin / isCallerAdmin) return true for that same Internet Identity principal across sessions/reloads.",
+        "Bootstrap does not grant admin to callers when at least one admin already exists (to avoid accidentally promoting additional users)."
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "text": "Add a backend API to support the frontend bootstrapping flow (e.g., a shared call that can persistently grant admin to the caller when eligible), and ensure existing approval checks continue to allow access for admins even if they are not approved.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "recent-messages"
+        ],
+        "quotes": [
+          "or always remember my internet id as admin"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A new shared backend method exists to perform the one-time bootstrap admin grant when eligible (state-changing, not query-only).",
+        "Existing approval gating logic continues to allow access when the caller is admin (admin bypasses approval), consistent with the existing intent.",
+        "No changes break the staff/company approval workflow (staff users still require approval unless they are admins)."
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "text": "Update the frontend authentication/approval gate so that in admin mode (hostname rentiq-udaipur-x18.caffeine.xyz), after the user signs in, the app invokes the backend bootstrap-admin method once (as needed), then re-checks admin status; the admin link must not show the “Approval Required” screen for the bootstrapped admin user.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "recent-messages"
+        ],
+        "quotes": [
+          "Please allow https://rentiq-udaipur-x18.caffeine.xyz/ Link as no permission",
+          "or always remember my internet id as admin"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When visiting the admin link and signing in as the bootstrap admin user, the UI proceeds into the app (Dashboard/Layout) without displaying the ApprovalRequiredScreen.",
+        "When visiting the staff/company link (rentiq-udaipur.com) as a non-admin user, the existing approval-required flow remains unchanged.",
+        "If the bootstrap call fails, the UI shows a clear error state or retry option rather than getting stuck indefinitely on a loading screen."
+      ]
+    }
+  ],
+  "constraints": [
+    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
+    "Do not edit frontend files under frontend/src/components/ui or other immutable paths listed in SYSTEM_CONTEXT; compose with existing components instead.",
+    "Do not change the staff/company approval workflow semantics: non-admin users on rentiq-udaipur.com must still require admin approval to access the app."
+  ],
+  "nonGoals": [
+    "Adding third-party authentication providers (only Internet Identity is used).",
+    "Changing or redesigning the access management UI beyond what is required to support bootstrap admin behavior.",
+    "Implementing real-time updates via websockets or push notifications."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

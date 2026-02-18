@@ -1,0 +1,44 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-18T11:06:39.810Z",
+  "summary": "Frontend adds an admin-domain bootstrap flow (hook + AuthApprovalGate changes) with loading/error handling, but the diff summary does not provide enough evidence that the backend implements the required persistent, one-time bootstrap-admin grant conditioned on there being zero existing admins.",
+  "missing_requirements": [
+    {
+      "id": "REQ-6",
+      "requirement": "Implement a persistent “bootstrap admin” mechanism so the first signed-in user on the admin hostname is automatically granted admin permission and remains admin across sessions/reloads, only when there are currently zero admins.",
+      "reason": "backend/main.mo shows a non-stable `var bootstrapAdmins = List.empty<Principal>()` but the diff summary does not show (a) a persistent/stable storage mechanism for the bootstrapped admin principal across upgrades/reloads, (b) logic that checks 'zero admins exist' before granting, or (c) the actual grant being wired into admin checks. With the provided truncated excerpt, persistence and the zero-admin eligibility rule are not evidenced.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "requirement": "Add a new shared (state-changing) backend method to perform the one-time bootstrap admin grant when eligible, and ensure admin bypasses approval while keeping staff/company approval semantics unchanged.",
+      "reason": "The frontend calls `actor.becomeBootstrapAdmin(isAdminDomain)` and a `BecomeAdminResponse` type is added, but the diff summary for backend/main.mo is truncated before showing any `public shared` method implementation for `becomeBootstrapAdmin` and its eligibility behavior. Admin-bypasses-approval is evidenced via `ensureApprovedUser` checking `not isAdmin(caller)` first, but the required new state-changing bootstrap API itself is not shown in the provided backend diff excerpt.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/hooks/useBootstrapAdmin.ts"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "Periodic polling of approval status every 5 seconds and refetch-on-window-focus behavior for `isCallerApproved`.",
+      "reason": "REQ-6/7/8 do not request adding polling/auto-refresh for approval checks; they only require a bootstrap call on admin domain and correct gating behavior.",
+      "evidence": [
+        "frontend/src/hooks/useApprovalStatus.ts"
+      ]
+    }
+  ],
+  "confidence": 0.66,
+  "changed_files": [
+    "backend/main.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/common/AuthApprovalGate.tsx",
+    "frontend/src/hooks/useAppMode.ts",
+    "frontend/src/hooks/useApprovalStatus.ts",
+    "frontend/src/hooks/useBootstrapAdmin.ts",
+    "project_state.json"
+  ]
+}

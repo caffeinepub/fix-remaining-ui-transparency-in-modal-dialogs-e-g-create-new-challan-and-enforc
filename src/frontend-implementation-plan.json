@@ -1,0 +1,33 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Admin-domain bootstrap flow to bypass Approval Required for the first admin",
+  "requirements": [
+    {
+      "id": "REQ-8",
+      "summary": "In admin mode, after sign-in invoke backend bootstrap-admin once (as needed), then re-check admin status so bootstrapped admin never sees Approval Required; keep staff/company approval flow unchanged and show a retryable error if bootstrap fails.",
+      "acceptanceCriteria": [
+        "When visiting the admin link and signing in as the bootstrap admin user, the UI proceeds into the app (Dashboard/Layout) without displaying the ApprovalRequiredScreen.",
+        "When visiting the staff/company link (rentiq-udaipur.com) as a non-admin user, the existing approval-required flow remains unchanged.",
+        "If the bootstrap call fails, the UI shows a clear error state or retry option rather than getting stuck indefinitely on a loading screen."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useBootstrapAdmin.ts",
+          "operation": "create",
+          "description": "Add a React Query hook that uses the existing actor (from core-infrastructure/useActor) to call the backend capability becomeBootstrapAdmin(isAdminDomain) when running on the admin hostname, returning success/error state and providing a retry action. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/common/AuthApprovalGate.tsx",
+          "operation": "modify",
+          "description": "Integrate admin-domain bootstrap into the global auth/approval gate: use useAppMode to detect admin hostname; once authenticated and actor is ready, run the bootstrap-admin call (via useBootstrapAdmin) before final admin/approval gating; on success, invalidate/refetch admin/approval queries so the gate can immediately proceed; on failure, render a clear error UI with retry (reuse QueryErrorState). Ensure non-admin (staff) hostname path does not invoke bootstrap and preserves existing user-approval semantics (admins bypass approval; non-admins still require approval). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useApprovalStatus.ts",
+          "operation": "modify",
+          "description": "Ensure the approval/admin queries can be promptly refreshed after a successful bootstrap (e.g., by exporting shared query keys or adding helper utilities for invalidation/refetch from AuthApprovalGate). Keep existing polling/behavior for staff/company mode unchanged (user-approval flow remains intact). Verify the component's usage instructions before implementing."
+        }
+      ]
+    }
+  ]
+}
