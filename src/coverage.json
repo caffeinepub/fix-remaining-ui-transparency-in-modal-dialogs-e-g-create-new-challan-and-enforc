@@ -1,60 +1,76 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T11:06:39.814Z",
+  "generatedAt": "2026-02-19T11:06:59.267Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
     "total": 3,
-    "implemented": 1,
+    "implemented": 3,
     "items": [
       {
-        "id": "REQ-6",
-        "summary": "Implement a persistent “bootstrap admin” mechanism so the first signed-in user who accesses the app from the admin hostname (rentiq-udaipur-x18.caffeine.xyz) is automatically granted admin permission in the backend, and is thereafter always treated as admin (no approval/permission screen needed for that user).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-7",
-        "summary": "Add a backend API to support the frontend bootstrapping flow (e.g., a shared call that can persistently grant admin to the caller when eligible), and ensure existing approval checks continue to allow access for admins even if they are not approved.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-8",
-        "summary": "Update the frontend authentication/approval gate so that in admin mode (hostname rentiq-udaipur-x18.caffeine.xyz), after the user signs in, the app invokes the backend bootstrap-admin method once (as needed), then re-checks admin status; the admin link must not show the “Approval Required” screen for the bootstrapped admin user.",
+        "id": "REQ-1",
+        "summary": "Debug and fix the Internet Identity authorization page (id.ai/#authorize) that currently displays a blank white screen instead of the login interface with passkey/Google/Apple/Microsoft options",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useBootstrapAdmin.ts",
-          "frontend/src/components/common/AuthApprovalGate.tsx",
-          "frontend/src/hooks/useApprovalStatus.ts"
+          "frontend/src/components/common/SignInScreen.tsx",
+          "frontend/src/components/common/SignInRequiredDialog.tsx",
+          "frontend/src/utils/runtimeDiagnostics.ts"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useBootstrapAdmin.ts",
+          "frontend/src/components/common/SignInScreen.tsx",
+          "frontend/src/components/common/SignInRequiredDialog.tsx",
+          "frontend/src/utils/runtimeDiagnostics.ts"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Verify the Internet Identity component initialization and ensure the authentication flow properly displays in iframe/popup/window mode",
+        "status": "implemented",
+        "plannedFiles": [
           "frontend/src/components/common/AuthApprovalGate.tsx",
-          "frontend/src/hooks/useApprovalStatus.ts"
+          "frontend/src/utils/diagnosticsReport.ts",
+          "frontend/src/components/common/BuildInfo.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/common/AuthApprovalGate.tsx",
+          "frontend/src/utils/diagnosticsReport.ts",
+          "frontend/src/components/common/BuildInfo.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Ensure the Internet Identity authentication integration works correctly in both admin mode (rentiq-udaipur-x18.caffeine.xyz) and production mode (rentiq-udaipur.com)",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useAppMode.ts",
+          "frontend/src/components/common/SignInScreen.tsx",
+          "frontend/index.html"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useAppMode.ts",
+          "frontend/src/components/common/SignInScreen.tsx",
+          "frontend/index.html"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
+    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
+    "frontend/index.html",
     "frontend/src/components/common/AuthApprovalGate.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
+    "frontend/src/components/common/BuildInfo.tsx",
+    "frontend/src/components/common/SignInRequiredDialog.tsx",
+    "frontend/src/components/common/SignInScreen.tsx",
     "frontend/src/hooks/useAppMode.ts",
-    "frontend/src/hooks/useApprovalStatus.ts",
-    "frontend/src/hooks/useBootstrapAdmin.ts",
+    "frontend/src/utils/diagnosticsReport.ts",
+    "frontend/src/utils/runtimeDiagnostics.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

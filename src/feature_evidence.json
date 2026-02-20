@@ -2,12 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-frontend-authentication-approval-gate-so-that-in-admin-mode-hostname-rentiq-udaipur-x18-caffeine-xyz-after-the-user-signs-in-the-app-invokes-the-backend-bootstrap-admin-method-once-as-needed-then-re-checks-admin-status-the-admin-link-must-not-show-the-approval-required-screen-for-the-bootstrapped-admin-user",
-      "featureTitle": "Update the frontend authentication/approval gate so that in admin mode (hostname rentiq-udaipur-x18.caffeine.xyz), after the user signs in, the app invokes the backend bootstrap-admin method once (as needed), then re-checks admin status; the admin link must not show the “Approval Required” screen for the bootstrapped admin user.",
+      "featureId": "feature-debug-and-fix-the-internet-identity-authorization-page-id-ai-authorize-that-currently-displays-a-blank-white-screen-instead-of-the-login-interface-with-passkey-google-apple-microsoft-options",
+      "featureTitle": "Debug and fix the Internet Identity authorization page (id.ai/#authorize) that currently displays a blank white screen instead of the login interface with passkey/Google/Apple/Microsoft options",
       "files": [
-        "frontend/src/components/common/AuthApprovalGate.tsx",
-        "frontend/src/hooks/useApprovalStatus.ts",
-        "frontend/src/hooks/useBootstrapAdmin.ts"
+        "frontend/src/components/common/SignInRequiredDialog.tsx",
+        "frontend/src/components/common/SignInScreen.tsx",
+        "frontend/src/utils/runtimeDiagnostics.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -20,7 +20,53 @@
         "user-approval@3.0.0"
       ],
       "testIds": [
-        "REQ-8"
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-verify-the-internet-identity-component-initialization-and-ensure-the-authentication-flow-properly-displays-in-iframe-popup-window-mode",
+      "featureTitle": "Verify the Internet Identity component initialization and ensure the authentication flow properly displays in iframe/popup/window mode",
+      "files": [
+        "frontend/src/components/common/AuthApprovalGate.tsx",
+        "frontend/src/components/common/BuildInfo.tsx",
+        "frontend/src/utils/diagnosticsReport.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-ensure-the-internet-identity-authentication-integration-works-correctly-in-both-admin-mode-rentiq-udaipur-x18-caffeine-xyz-and-production-mode-rentiq-udaipur-com",
+      "featureTitle": "Ensure the Internet Identity authentication integration works correctly in both admin mode (rentiq-udaipur-x18.caffeine.xyz) and production mode (rentiq-udaipur.com)",
+      "files": [
+        "frontend/index.html",
+        "frontend/src/components/common/SignInScreen.tsx",
+        "frontend/src/hooks/useAppMode.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
       ],
       "confidence": "high"
     }

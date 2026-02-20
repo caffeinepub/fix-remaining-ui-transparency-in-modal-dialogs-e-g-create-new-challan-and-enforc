@@ -1,8 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 
 /**
- * Hook to detect if the app is running on the admin domain.
- * Admin domain is identified by the presence of "-x18" in the hostname.
+ * Hook to detect if the app is running on the admin domain with enhanced diagnostic logging for domain-specific Internet Identity troubleshooting.
  */
 export function useAppMode() {
   const isAdminDomain = useMemo(() => {
@@ -13,6 +12,13 @@ export function useAppMode() {
   }, []);
 
   const isStaffDomain = !isAdminDomain;
+
+  useEffect(() => {
+    console.log('=== App Mode Detection ===');
+    console.log('Hostname:', window.location.hostname);
+    console.log('Is Admin Domain:', isAdminDomain);
+    console.log('Mode:', isAdminDomain ? 'admin' : 'staff');
+  }, [isAdminDomain]);
 
   return {
     isAdminDomain,

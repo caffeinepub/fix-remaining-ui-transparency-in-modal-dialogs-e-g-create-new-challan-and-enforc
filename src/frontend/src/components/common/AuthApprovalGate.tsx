@@ -14,9 +14,7 @@ interface AuthApprovalGateProps {
 }
 
 /**
- * Global authentication and approval gate.
- * Blocks all routes until the user is signed in AND (approved OR admin).
- * On admin domain, attempts to bootstrap the first admin automatically.
+ * Global authentication and approval gate with enhanced Internet Identity initialization diagnostics, domain-aware bootstrap flow, and comprehensive error handling for authentication failures.
  */
 export default function AuthApprovalGate({ children }: AuthApprovalGateProps) {
   const { identity, loginStatus } = useInternetIdentity();
@@ -31,6 +29,18 @@ export default function AuthApprovalGate({ children }: AuthApprovalGateProps) {
   const isAuthenticated = !!identity && !identity.getPrincipal().isAnonymous();
   const isInitializing = loginStatus === 'initializing';
 
+  // Log authentication state changes for diagnostics
+  useEffect(() => {
+    console.log('=== AuthApprovalGate State ===');
+    console.log('Login Status:', loginStatus);
+    console.log('Is Authenticated:', isAuthenticated);
+    console.log('Is Admin Domain:', isAdminDomain);
+    console.log('Actor Ready:', !!actor && !actorFetching);
+    console.log('Bootstrap Attempted:', bootstrapAttempted);
+    console.log('Is Bootstrapping:', isBootstrapping);
+    console.log('Bootstrap Success:', bootstrapSuccess);
+  }, [loginStatus, isAuthenticated, isAdminDomain, actor, actorFetching, bootstrapAttempted, isBootstrapping, bootstrapSuccess]);
+
   // Attempt bootstrap on admin domain once authenticated and actor is ready
   useEffect(() => {
     if (
@@ -42,14 +52,19 @@ export default function AuthApprovalGate({ children }: AuthApprovalGateProps) {
       !isBootstrapping &&
       !bootstrapSuccess
     ) {
+      console.log('=== Attempting Bootstrap Admin ===');
+      console.log('Domain:', window.location.hostname);
+      console.log('Principal:', identity?.getPrincipal().toString());
+      
       setBootstrapAttempted(true);
       bootstrapAdmin(true);
     }
-  }, [isAdminDomain, isAuthenticated, actor, actorFetching, bootstrapAttempted, isBootstrapping, bootstrapSuccess, bootstrapAdmin]);
+  }, [isAdminDomain, isAuthenticated, actor, actorFetching, bootstrapAttempted, isBootstrapping, bootstrapSuccess, bootstrapAdmin, identity]);
 
   // Refetch admin/approval status after successful bootstrap
   useEffect(() => {
     if (bootstrapSuccess && bootstrapData?.success) {
+      console.log('=== Bootstrap Successful - Refetching Permissions ===');
       refetchAdmin();
       refetchApproval();
     }
@@ -61,7 +76,10 @@ export default function AuthApprovalGate({ children }: AuthApprovalGateProps) {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-sm text-muted-foreground">Initializing...</p>
+          <p className="text-sm text-muted-foreground">Initializing authentication...</p>
+          <p className="text-xs text-muted-foreground">
+            Domain: {typeof window !== 'undefined' ? window.location.hostname : 'unknown'}
+          </p>
         </div>
       </div>
     );
@@ -79,6 +97,9 @@ export default function AuthApprovalGate({ children }: AuthApprovalGateProps) {
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
           <p className="text-sm text-muted-foreground">Setting up admin access...</p>
+          <p className="text-xs text-muted-foreground">
+            Principal: {identity?.getPrincipal().toString().substring(0, 20)}...
+          </p>
         </div>
       </div>
     );
@@ -92,6 +113,7 @@ export default function AuthApprovalGate({ children }: AuthApprovalGateProps) {
           <QueryErrorState
             error={bootstrapErrorObj || new Error('Failed to bootstrap admin')}
             onRetry={() => {
+              console.log('=== Retrying Bootstrap Admin ===');
               retryBootstrap();
               setBootstrapAttempted(false);
             }}
@@ -116,15 +138,18 @@ export default function AuthApprovalGate({ children }: AuthApprovalGateProps) {
 
   // Admins bypass the approval requirement
   if (isAdmin) {
+    console.log('=== User is Admin - Granting Access ===');
     return <>{children}</>;
   }
 
   // If authenticated but not approved (and not admin), show approval required screen
   // This applies to both admin and staff domains
   if (!isApproved) {
+    console.log('=== User Not Approved - Showing Approval Screen ===');
     return <ApprovalRequiredScreen />;
   }
 
   // User is authenticated and approved, render the app
+  console.log('=== User Authenticated and Approved - Rendering App ===');
   return <>{children}</>;
 }

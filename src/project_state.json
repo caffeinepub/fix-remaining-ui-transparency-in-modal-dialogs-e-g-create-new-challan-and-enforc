@@ -1,49 +1,44 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Implement role/permission logic so the admin link does not require approval and the user’s Internet Identity is always treated as admin.",
+  "summary": "RentIQ Udaipur - a web app with Internet Identity authentication that requires admin approval for new users to access the system",
   "architectural_notes": [
-    "Add role/permission gating: admin users (including a whitelisted Internet Identity) bypass approval flow; approval applies only to staff/company users."
+    "Internet Identity authentication with blank screen rendering issue on id.ai/#authorize",
+    "Admin approval system required for new user access",
+    "Two deployment links: production (rentiq-udaipur.com) and admin (rentiq-udaipur-x18.caffeine.xyz)"
   ],
   "known_issues": [
-    "Both links currently require the same permission/approval flow; admin link incorrectly shows approval requirement."
+    "Internet Identity authorization page shows blank white screen instead of login interface with passkey/Google/Apple/Microsoft options"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-update-the-frontend-authentication-approval-gate-so-that-in-admin-mode-hostname-rentiq-udaipur-x18-caffeine-xyz-after-the-user-signs-in-the-app-invokes-the-backend-bootstrap-admin-method-once-as-needed-then-re-checks-admin-status-the-admin-link-must-not-show-the-approval-required-screen-for-the-bootstrapped-admin-user",
-      "title": "Update the frontend authentication/approval gate so that in admin mode (hostname rentiq-udaipur-x18.caffeine.xyz), after the user signs in, the app invokes the backend bootstrap-admin method once (as needed), then re-checks admin status; the admin link must not show the “Approval Required” screen for the bootstrapped admin user.",
+      "id": "feature-debug-and-fix-the-internet-identity-authorization-page-id-ai-authorize-that-currently-displays-a-blank-white-screen-instead-of-the-login-interface-with-passkey-google-apple-microsoft-options",
+      "title": "Debug and fix the Internet Identity authorization page (id.ai/#authorize) that currently displays a blank white screen instead of the login interface with passkey/Google/Apple/Microsoft options",
       "reqIds": [
-        "REQ-8"
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-verify-the-internet-identity-component-initialization-and-ensure-the-authentication-flow-properly-displays-in-iframe-popup-window-mode",
+      "title": "Verify the Internet Identity component initialization and ensure the authentication flow properly displays in iframe/popup/window mode",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-internet-identity-authentication-integration-works-correctly-in-both-admin-mode-rentiq-udaipur-x18-caffeine-xyz-and-production-mode-rentiq-udaipur-com",
+      "title": "Ensure the Internet Identity authentication integration works correctly in both admin mode (rentiq-udaipur-x18.caffeine.xyz) and production mode (rentiq-udaipur.com)",
+      "reqIds": [
+        "REQ-3"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [
-    {
-      "id": "AR-1",
-      "summary": "Treat the user’s Internet Identity as permanent admin so the admin link (rentiq-udaipur-x18.caffeine.xyz) never shows/needs approval permission.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Implement a persistent “bootstrap admin” mechanism so the first signed-in user who accesses the app from the admin hostname (rentiq-udaipur-x18.caffeine.xyz) is automatically granted admin permission in the backend, and is thereafter always treated as admin (no approval/permission screen needed for that user).",
-      "reqIds": [
-        "REQ-6"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Add a backend API to support the frontend bootstrapping flow (e.g., a shared call that can persistently grant admin to the caller when eligible), and ensure existing approval checks continue to allow access for admins even if they are not approved.",
-      "reqIds": [
-        "REQ-7"
-      ],
-      "status": "pending"
-    }
-  ],
-  "projectName": "Rentiq Udaipur",
+  "new_feature_requests": [],
+  "projectName": "RentIQ Udaipur",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

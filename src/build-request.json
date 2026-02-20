@@ -1,77 +1,81 @@
 {
   "kind": "build_request",
-  "title": "Bootstrap permanent admin Internet Identity so admin link never shows Approval Required",
-  "projectName": "Rentiq Udaipur",
-  "priority": "normal",
+  "title": "Fix Internet Identity blank authorization screen",
+  "projectName": "RentIQ Udaipur",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-6",
-      "text": "Implement a persistent “bootstrap admin” mechanism so the first signed-in user who accesses the app from the admin hostname (rentiq-udaipur-x18.caffeine.xyz) is automatically granted admin permission in the backend, and is thereafter always treated as admin (no approval/permission screen needed for that user).",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "recent-messages"
-        ],
-        "quotes": [
-          "Please allow https://rentiq-udaipur-x18.caffeine.xyz/ Link as no permission",
-          "or always remember my internet id as admin",
-          "1. yes",
-          "build it"
-        ]
-      },
-      "acceptanceCriteria": [
-        "If there are currently zero admins in the backend access control state, the backend can persistently grant #admin permission to the caller when a dedicated bootstrap method is invoked.",
-        "After bootstrap, backend admin checks (e.g., ensureAdmin / isCallerAdmin) return true for that same Internet Identity principal across sessions/reloads.",
-        "Bootstrap does not grant admin to callers when at least one admin already exists (to avoid accidentally promoting additional users)."
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Add a backend API to support the frontend bootstrapping flow (e.g., a shared call that can persistently grant admin to the caller when eligible), and ensure existing approval checks continue to allow access for admins even if they are not approved.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "recent-messages"
-        ],
-        "quotes": [
-          "or always remember my internet id as admin"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A new shared backend method exists to perform the one-time bootstrap admin grant when eligible (state-changing, not query-only).",
-        "Existing approval gating logic continues to allow access when the caller is admin (admin bypasses approval), consistent with the existing intent.",
-        "No changes break the staff/company approval workflow (staff users still require approval unless they are admins)."
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "text": "Update the frontend authentication/approval gate so that in admin mode (hostname rentiq-udaipur-x18.caffeine.xyz), after the user signs in, the app invokes the backend bootstrap-admin method once (as needed), then re-checks admin status; the admin link must not show the “Approval Required” screen for the bootstrapped admin user.",
+      "id": "REQ-1",
+      "text": "Debug and fix the Internet Identity authorization page (id.ai/#authorize) that currently displays a blank white screen instead of the login interface with passkey/Google/Apple/Microsoft options",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "recent-messages"
+          "msg-recent"
         ],
         "quotes": [
-          "Please allow https://rentiq-udaipur-x18.caffeine.xyz/ Link as no permission",
-          "or always remember my internet id as admin"
+          "when i am opening sign in option its not showing to connect to the internet id",
+          "The Internet Identity authorization page (id.ai/#authorize) loads but displays a blank white screen"
         ]
       },
       "acceptanceCriteria": [
-        "When visiting the admin link and signing in as the bootstrap admin user, the UI proceeds into the app (Dashboard/Layout) without displaying the ApprovalRequiredScreen.",
-        "When visiting the staff/company link (rentiq-udaipur.com) as a non-admin user, the existing approval-required flow remains unchanged.",
-        "If the bootstrap call fails, the UI shows a clear error state or retry option rather than getting stuck indefinitely on a loading screen."
+        "When users click the sign-in button, the Internet Identity authorization interface renders correctly",
+        "Users can see passkey, Google, Apple, and Microsoft login options",
+        "The authorization page no longer shows a blank white screen",
+        "Users can successfully authenticate using Internet Identity"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Verify the Internet Identity component initialization and ensure the authentication flow properly displays in iframe/popup/window mode",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ],
+        "quotes": [
+          "Debug the Internet Identity component initialization and rendering",
+          "Verify the authorization URL configuration and iframe/popup setup"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Internet Identity component initializes without errors",
+        "Authorization flow opens in the correct display mode (iframe, popup, or window)",
+        "The id.ai authorization URL loads successfully with proper configuration",
+        "Authentication state persists correctly after login"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Ensure the Internet Identity authentication integration works correctly in both admin mode (rentiq-udaipur-x18.caffeine.xyz) and production mode (rentiq-udaipur.com)",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ],
+        "quotes": [
+          "I am Checking Admin Link",
+          "the admin link (rentiq-udaipur-x18.caffeine.xyz)"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Internet Identity login works on the admin domain (rentiq-udaipur-x18.caffeine.xyz)",
+        "Internet Identity login works on the production domain (rentiq-udaipur.com)",
+        "Both domains display the login interface correctly without blank screens",
+        "User authentication state is maintained correctly across both domains"
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
-    "Do not edit frontend files under frontend/src/components/ui or other immutable paths listed in SYSTEM_CONTEXT; compose with existing components instead.",
-    "Do not change the staff/company approval workflow semantics: non-admin users on rentiq-udaipur.com must still require admin approval to access the app."
+    "Do not modify the useInternetIdentity.ts hook file (it is in the immutable paths list)",
+    "Maintain compatibility with the existing approval and authentication flow",
+    "Do not change backend authentication logic",
+    "Keep the existing Internet Identity integration pattern intact"
   ],
   "nonGoals": [
-    "Adding third-party authentication providers (only Internet Identity is used).",
-    "Changing or redesigning the access management UI beyond what is required to support bootstrap admin behavior.",
-    "Implementing real-time updates via websockets or push notifications."
+    "Adding new authentication providers beyond Internet Identity",
+    "Changing the approval workflow or admin bootstrap functionality",
+    "Modifying the user approval request screen or pending state logic",
+    "Adding the Approval section to the admin interface (separate feature request)"
   ],
   "imageRequirements": {
     "required": [],

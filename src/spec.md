@@ -1,12 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Ensure the admin-hosted app link can permanently bootstrap the first Internet Identity user as an admin so they never see the “Approval Required” screen on the admin hostname.
+**Goal:** Fix the Internet Identity authorization page that displays a blank white screen instead of the login interface.
 
 **Planned changes:**
-- Backend: Add a persistent one-time “bootstrap admin” grant that assigns admin to the caller only when there are currently zero admins stored, and persists that admin principal for future sessions.
-- Backend: Add a shared (state-changing) API method to perform the bootstrap flow and ensure admin checks bypass approval gating for admins.
-- Frontend: On the admin hostname (rentiq-udaipur-x18.caffeine.xyz), after sign-in call the bootstrap method when needed, then re-check admin status and proceed into the app without showing ApprovalRequiredScreen for the bootstrapped admin.
-- Frontend: If bootstrap fails, show a clear error or retry option (avoid indefinite loading).
+- Debug and fix the Internet Identity authorization page (id.ai/#authorize) to display the login interface with passkey/Google/Apple/Microsoft options
+- Verify the Internet Identity component initialization and ensure the authentication flow properly displays in iframe/popup/window mode
+- Ensure Internet Identity authentication works correctly on both admin domain (rentiq-udaipur-x18.caffeine.xyz) and production domain (rentiq-udaipur.com)
 
-**User-visible outcome:** When signing in via the admin link for the first time (with no existing admins), the user is automatically and permanently made admin and can access the app without the “Approval Required” screen; the staff/company link behavior remains unchanged for non-admin users.
+**User-visible outcome:** Users can successfully sign in using Internet Identity by seeing the proper login interface instead of a blank screen, and authentication works on both admin and production domains.

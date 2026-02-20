@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useActorWithConnection } from '../../hooks/useActorWithConnection';
+import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import { useNavigate } from '@tanstack/react-router';
 import {
   Sheet,
@@ -21,16 +22,16 @@ import {
   Package, 
   Clock,
   ExternalLink,
-  FileText
+  FileText,
+  Shield,
+  TestTube
 } from 'lucide-react';
-import { getDiagnosticLog } from '../../utils/runtimeDiagnostics';
+import { getDiagnosticLog, logAuthEvent } from '../../utils/runtimeDiagnostics';
 import DiagnosticsReportDialog from './DiagnosticsReportDialog';
 import { useState } from 'react';
 
 /**
- * Build Info panel displaying runtime/build diagnostics with backend-fetched metadata,
- * connection status with progressive stage display, quick verification actions, and
- * enhanced retry mechanism with elapsed time tracking
+ * Build Info panel with enhanced Internet Identity diagnostics, manual authentication test button, browser compatibility checks, and comprehensive troubleshooting guidance for blank screen issues.
  */
 export default function BuildInfo() {
   const navigate = useNavigate();
@@ -44,7 +45,9 @@ export default function BuildInfo() {
     retryCount,
     elapsedTime
   } = useActorWithConnection();
+  const { login, loginStatus, identity } = useInternetIdentity();
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [testingAuth, setTestingAuth] = useState(false);
 
   const buildMetadataQuery = useQuery({
     queryKey: ['buildMetadata'],
@@ -58,9 +61,44 @@ export default function BuildInfo() {
 
   const diagnosticLog = getDiagnosticLog();
   const hasErrors = diagnosticLog.length > 0;
+  const authErrors = diagnosticLog.filter(e => 
+    e.type === 'auth-blank-screen' || 
+    e.type === 'auth-popup-blocked' || 
+    e.type === 'auth-timeout'
+  );
 
   const handleRetry = async () => {
     await retry();
+  };
+
+  const handleTestAuth = async () => {
+    setTestingAuth(true);
+    logAuthEvent('init', 'Manual authentication test initiated from Build Info');
+    
+    try {
+      console.log('=== Manual Internet Identity Test ===');
+      console.log('Current Status:', loginStatus);
+      console.log('Is Authenticated:', !!identity);
+      console.log('Domain:', window.location.hostname);
+      console.log('Timestamp:', new Date().toISOString());
+      
+      await login();
+      
+      console.log('Manual test: Login successful');
+    } catch (error: any) {
+      console.error('=== Manual Internet Identity Test Failed ===');
+      console.error('Error:', error);
+      
+      if (error?.message?.includes('popup') || error?.message?.includes('blocked')) {
+        logAuthEvent('popup-blocked', 'Popup blocker detected during manual test');
+      } else if (error?.message?.includes('timeout')) {
+        logAuthEvent('timeout', 'Authentication timeout during manual test');
+      } else {
+        logAuthEvent('blank-screen', `Manual test failed: ${error?.message}`);
+      }
+    } finally {
+      setTestingAuth(false);
+    }
   };
 
   return (
@@ -131,6 +169,58 @@ export default function BuildInfo() {
                     </AlertDescription>
                   </Alert>
                 )}
+              </div>
+
+              <Separator />
+
+              {/* Internet Identity Status */}
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Internet Identity Status
+                </h3>
+                
+                {identity ? (
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertTitle>Authenticated</AlertTitle>
+                    <AlertDescription className="space-y-2">
+                      <p className="text-xs font-mono break-all">
+                        {identity.getPrincipal().toString()}
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Not Authenticated</AlertTitle>
+                    <AlertDescription>
+                      Sign in to access the application.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {authErrors.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Authentication Issues Detected</AlertTitle>
+                    <AlertDescription className="text-xs space-y-1">
+                      <p>{authErrors.length} authentication error(s) logged</p>
+                      <p>Check diagnostics for details</p>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <Button
+                  onClick={handleTestAuth}
+                  disabled={testingAuth || loginStatus === 'logging-in'}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  <TestTube className="h-4 w-4 mr-2" />
+                  {testingAuth ? 'Testing...' : 'Test Internet Identity Login'}
+                </Button>
               </div>
 
               <Separator />
@@ -214,6 +304,10 @@ export default function BuildInfo() {
                     <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                     <span>Progressive status messages</span>
                   </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span>Internet Identity diagnostics enabled</span>
+                  </div>
                 </div>
               </div>
 
@@ -222,20 +316,36 @@ export default function BuildInfo() {
               {/* Documentation Link */}
               <div className="space-y-3">
                 <h3 className="font-semibold">Documentation</h3>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  asChild
-                >
-                  <a
-                    href="https://github.com/dfinity/icp-js-core"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    asChild
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    ICP JavaScript SDK Docs
-                  </a>
-                </Button>
+                    <a
+                      href="https://github.com/dfinity/icp-js-core"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      ICP JavaScript SDK Docs
+                    </a>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    asChild
+                  >
+                    <a
+                      href="https://identity.ic0.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Internet Identity Help
+                    </a>
+                  </Button>
+                </div>
               </div>
             </div>
           </ScrollArea>

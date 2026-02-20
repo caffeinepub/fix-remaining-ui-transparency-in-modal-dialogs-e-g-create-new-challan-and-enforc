@@ -1,10 +1,7 @@
 import { safeErrorLog, safeStringify } from './safeSerialize';
 
 /**
- * Runtime diagnostics helper that attaches global error listeners to capture and log
- * unhandled errors and promise rejections with full context for debugging deployment failures,
- * now including session-scoped verification context (actor/auth status, current route) and
- * enhanced actor initialization lifecycle signals (probe/init/timeout/retry/failure) for troubleshooting
+ * Runtime diagnostics helper with enhanced Internet Identity authentication lifecycle tracking, blank screen detection, authorization flow diagnostics, and comprehensive error context capture for troubleshooting deployment and authentication failures.
  */
 
 interface DiagnosticContext {
@@ -18,7 +15,7 @@ interface DiagnosticContext {
 }
 
 interface DiagnosticEntry {
-  type: 'error' | 'unhandledrejection' | 'actor-init' | 'actor-probe' | 'actor-timeout' | 'actor-retry' | 'actor-failure';
+  type: 'error' | 'unhandledrejection' | 'actor-init' | 'actor-probe' | 'actor-timeout' | 'actor-retry' | 'actor-failure' | 'auth-init' | 'auth-blank-screen' | 'auth-popup-blocked' | 'auth-timeout';
   context: DiagnosticContext;
   error: string;
   timestamp: number;
@@ -119,6 +116,34 @@ export function logActorInitEvent(
 }
 
 /**
+ * Log Internet Identity authentication events for blank screen diagnostics
+ */
+export function logAuthEvent(
+  event: 'init' | 'blank-screen' | 'popup-blocked' | 'timeout',
+  details?: string
+) {
+  const eventTypes: Record<typeof event, DiagnosticEntry['type']> = {
+    init: 'auth-init',
+    'blank-screen': 'auth-blank-screen',
+    'popup-blocked': 'auth-popup-blocked',
+    timeout: 'auth-timeout',
+  };
+
+  const errorMessage = details || `Internet Identity ${event}`;
+  
+  console.warn('=== Internet Identity Diagnostic ===');
+  console.warn('Event:', event);
+  console.warn('Details:', errorMessage);
+  console.warn('Timestamp:', new Date().toISOString());
+  console.warn('Domain:', window.location.hostname);
+  console.warn('User Agent:', navigator.userAgent.substring(0, 100));
+  console.warn('Cookies Enabled:', navigator.cookieEnabled);
+  console.warn('====================================');
+
+  logErrorWithContext(eventTypes[event], errorMessage);
+}
+
+/**
  * Retrieve the current diagnostic log
  */
 export function getDiagnosticLog(): DiagnosticEntry[] {
@@ -165,4 +190,6 @@ export function initializeRuntimeDiagnostics() {
   });
   
   console.log('Runtime diagnostics initialized');
+  console.log('Domain:', window.location.hostname);
+  console.log('Environment:', import.meta.env.MODE);
 }

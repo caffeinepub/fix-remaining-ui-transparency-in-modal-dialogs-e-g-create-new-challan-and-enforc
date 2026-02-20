@@ -1,31 +1,86 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Admin-domain bootstrap flow to bypass Approval Required for the first admin",
+  "title": "Fix Internet Identity Blank Authorization Screen",
   "requirements": [
     {
-      "id": "REQ-8",
-      "summary": "In admin mode, after sign-in invoke backend bootstrap-admin once (as needed), then re-check admin status so bootstrapped admin never sees Approval Required; keep staff/company approval flow unchanged and show a retryable error if bootstrap fails.",
+      "id": "REQ-1",
+      "summary": "Debug and fix the Internet Identity authorization page that displays a blank white screen instead of the login interface",
       "acceptanceCriteria": [
-        "When visiting the admin link and signing in as the bootstrap admin user, the UI proceeds into the app (Dashboard/Layout) without displaying the ApprovalRequiredScreen.",
-        "When visiting the staff/company link (rentiq-udaipur.com) as a non-admin user, the existing approval-required flow remains unchanged.",
-        "If the bootstrap call fails, the UI shows a clear error state or retry option rather than getting stuck indefinitely on a loading screen."
+        "When users click the sign-in button, the Internet Identity authorization interface renders correctly",
+        "Users can see passkey, Google, Apple, and Microsoft login options",
+        "The authorization page no longer shows a blank white screen",
+        "Users can successfully authenticate using Internet Identity"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useBootstrapAdmin.ts",
-          "operation": "create",
-          "description": "Add a React Query hook that uses the existing actor (from core-infrastructure/useActor) to call the backend capability becomeBootstrapAdmin(isAdminDomain) when running on the admin hostname, returning success/error state and providing a retry action. Verify the component's usage instructions before implementing."
+          "path": "frontend/src/components/common/SignInScreen.tsx",
+          "operation": "modify",
+          "description": "Add error boundary and diagnostic logging around the Internet Identity login flow. Include detailed error handling for AuthClient initialization failures and blank screen detection. Add retry mechanism if the authorization window fails to load properly. Ensure proper loading state management during the authentication handshake."
         },
+        {
+          "path": "frontend/src/components/common/SignInRequiredDialog.tsx",
+          "operation": "modify",
+          "description": "Enhance error handling for the inline sign-in dialog to catch and display Internet Identity initialization errors. Add diagnostic information when the authorization flow fails to render. Include user-friendly error messages with retry options when the blank screen occurs."
+        },
+        {
+          "path": "frontend/src/utils/runtimeDiagnostics.ts",
+          "operation": "modify",
+          "description": "Add specific diagnostic event types for Internet Identity authorization failures, blank screen detection, and AuthClient initialization errors. Include capture of authorization URL, window/iframe mode, and timing information to help debug the blank screen issue."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Verify Internet Identity component initialization and ensure the authentication flow properly displays in iframe/popup/window mode",
+      "acceptanceCriteria": [
+        "Internet Identity component initializes without errors",
+        "Authorization flow opens in the correct display mode (iframe, popup, or window)",
+        "The id.ai authorization URL loads successfully with proper configuration",
+        "Authentication state persists correctly after login"
+      ],
+      "file_operations": [
         {
           "path": "frontend/src/components/common/AuthApprovalGate.tsx",
           "operation": "modify",
-          "description": "Integrate admin-domain bootstrap into the global auth/approval gate: use useAppMode to detect admin hostname; once authenticated and actor is ready, run the bootstrap-admin call (via useBootstrapAdmin) before final admin/approval gating; on success, invalidate/refetch admin/approval queries so the gate can immediately proceed; on failure, render a clear error UI with retry (reuse QueryErrorState). Ensure non-admin (staff) hostname path does not invoke bootstrap and preserves existing user-approval semantics (admins bypass approval; non-admins still require approval). Verify the component's usage instructions before implementing."
+          "description": "Add comprehensive diagnostic logging for Internet Identity initialization sequence. Capture and log AuthClient creation, configuration parameters, and any initialization errors. Add visual feedback during the authentication check phase to prevent perceived blank screens during initial load."
         },
         {
-          "path": "frontend/src/hooks/useApprovalStatus.ts",
+          "path": "frontend/src/utils/diagnosticsReport.ts",
           "operation": "modify",
-          "description": "Ensure the approval/admin queries can be promptly refreshed after a successful bootstrap (e.g., by exporting shared query keys or adding helper utilities for invalidation/refetch from AuthApprovalGate). Keep existing polling/behavior for staff/company mode unchanged (user-approval flow remains intact). Verify the component's usage instructions before implementing."
+          "description": "Extend the diagnostics report to include Internet Identity-specific sections covering AuthClient status, authorization URL configuration, window/iframe mode detection, and authentication state. Include browser compatibility information and CSP/CORS status that might affect Internet Identity rendering."
+        },
+        {
+          "path": "frontend/src/components/common/BuildInfo.tsx",
+          "operation": "modify",
+          "description": "Add an Internet Identity status section showing AuthClient initialization state, current identity status, and authorization flow diagnostics. Include a manual test button that opens the Internet Identity authorization flow with detailed logging to help debug blank screen issues."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Ensure Internet Identity authentication works correctly on both admin domain (rentiq-udaipur-x18.caffeine.xyz) and production domain (rentiq-udaipur.com)",
+      "acceptanceCriteria": [
+        "Internet Identity login works on the admin domain (rentiq-udaipur-x18.caffeine.xyz)",
+        "Internet Identity login works on the production domain (rentiq-udaipur.com)",
+        "Both domains display the login interface correctly without blank screens",
+        "User authentication state is maintained correctly across both domains"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useAppMode.ts",
+          "operation": "modify",
+          "description": "Add diagnostic logging to capture the detected app mode (admin vs staff) and current hostname. Log this information during initialization to help diagnose domain-specific Internet Identity issues. Include validation that the app mode detection is working correctly for both domains."
+        },
+        {
+          "path": "frontend/src/components/common/SignInScreen.tsx",
+          "operation": "modify",
+          "description": "Add domain-aware error messages and diagnostics. Display the current domain and app mode prominently when authentication fails. Include specific troubleshooting guidance for each domain type. Add a fallback authentication method or clearer error reporting if the Internet Identity authorization fails to render on specific domains."
+        },
+        {
+          "path": "frontend/index.html",
+          "operation": "modify",
+          "description": "Review and ensure proper CSP (Content Security Policy) meta tags are configured to allow Internet Identity iframe/popup rendering from id.ai domain. Verify that no CSP restrictions are blocking the Internet Identity authorization interface. Add diagnostic meta tags or comments documenting the CSP requirements for Internet Identity."
         }
       ]
     }
