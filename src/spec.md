@@ -1,11 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the Internet Identity authorization page that displays a blank white screen instead of the login interface.
+**Goal:** Remove the connection error UI that blocks access to the main application.
 
 **Planned changes:**
-- Debug and fix the Internet Identity authorization page (id.ai/#authorize) to display the login interface with passkey/Google/Apple/Microsoft options
-- Verify the Internet Identity component initialization and ensure the authentication flow properly displays in iframe/popup/window mode
-- Ensure Internet Identity authentication works correctly on both admin domain (rentiq-udaipur-x18.caffeine.xyz) and production domain (rentiq-udaipur.com)
+- Remove the BackendConnectionGate component wrapper from App.tsx router configuration
+- Delete the BackendConnectionGate.tsx component file from frontend/src/components/common/
+- Preserve all other authentication and approval gate functionality
 
-**User-visible outcome:** Users can successfully sign in using Internet Identity by seeing the proper login interface instead of a blank screen, and authentication works on both admin and production domains.
+**User-visible outcome:** Users can immediately access the dashboard and all application modules without seeing connection error messages or diagnostics UI blocking the interface.

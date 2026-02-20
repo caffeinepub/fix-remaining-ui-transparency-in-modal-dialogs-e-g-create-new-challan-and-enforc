@@ -1,81 +1,61 @@
 {
   "kind": "build_request",
-  "title": "Fix Internet Identity blank authorization screen",
+  "title": "Remove connection error UI blocking main app access",
   "projectName": "RentIQ Udaipur",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Debug and fix the Internet Identity authorization page (id.ai/#authorize) that currently displays a blank white screen instead of the login interface with passkey/Google/Apple/Microsoft options",
+      "text": "Remove the BackendConnectionGate component wrapper from the App.tsx router configuration to prevent connection diagnostics UI from blocking access to the dashboard and other application modules",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-1",
+          "msg-3",
+          "msg-5",
+          "msg-7"
         ],
         "quotes": [
-          "when i am opening sign in option its not showing to connect to the internet id",
-          "The Internet Identity authorization page (id.ai/#authorize) loads but displays a blank white screen"
+          "can you remove that completely Connection Failed Unable to connect to the backend",
+          "you want me to completely remove the connection error handling code",
+          "its blocking the main app",
+          "I'll completely remove all the connection error handling code"
         ]
       },
       "acceptanceCriteria": [
-        "When users click the sign-in button, the Internet Identity authorization interface renders correctly",
-        "Users can see passkey, Google, Apple, and Microsoft login options",
-        "The authorization page no longer shows a blank white screen",
-        "Users can successfully authenticate using Internet Identity"
+        "Users can immediately access the dashboard without seeing connection error messages",
+        "No connection diagnostics UI, retry buttons, or error messages are displayed",
+        "The main app (dashboard and other modules/modals) renders directly without being blocked"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Verify the Internet Identity component initialization and ensure the authentication flow properly displays in iframe/popup/window mode",
+      "text": "Remove the BackendConnectionGate.tsx component file from frontend/src/components/common/ since it is no longer used",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-recent"
-        ],
-        "quotes": [
-          "Debug the Internet Identity component initialization and rendering",
-          "Verify the authorization URL configuration and iframe/popup setup"
+          "msg-3",
+          "msg-7"
         ]
       },
       "acceptanceCriteria": [
-        "Internet Identity component initializes without errors",
-        "Authorization flow opens in the correct display mode (iframe, popup, or window)",
-        "The id.ai authorization URL loads successfully with proper configuration",
-        "Authentication state persists correctly after login"
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Ensure the Internet Identity authentication integration works correctly in both admin mode (rentiq-udaipur-x18.caffeine.xyz) and production mode (rentiq-udaipur.com)",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-recent"
-        ],
-        "quotes": [
-          "I am Checking Admin Link",
-          "the admin link (rentiq-udaipur-x18.caffeine.xyz)"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Internet Identity login works on the admin domain (rentiq-udaipur-x18.caffeine.xyz)",
-        "Internet Identity login works on the production domain (rentiq-udaipur.com)",
-        "Both domains display the login interface correctly without blank screens",
-        "User authentication state is maintained correctly across both domains"
+        "The BackendConnectionGate.tsx file is deleted from the codebase",
+        "No unused imports or references to BackendConnectionGate remain"
       ]
     }
   ],
   "constraints": [
-    "Do not modify the useInternetIdentity.ts hook file (it is in the immutable paths list)",
-    "Maintain compatibility with the existing approval and authentication flow",
-    "Do not change backend authentication logic",
-    "Keep the existing Internet Identity integration pattern intact"
+    "Do not modify frontend/src/hooks/useInternetIdentity.ts",
+    "Do not modify frontend/src/hooks/useActor.ts",
+    "Do not modify frontend/src/main.tsx",
+    "Do not modify frontend/src/components/ui components",
+    "Preserve all other authentication and approval gate functionality (AuthApprovalGate, AppErrorBoundary)"
   ],
   "nonGoals": [
-    "Adding new authentication providers beyond Internet Identity",
-    "Changing the approval workflow or admin bootstrap functionality",
-    "Modifying the user approval request screen or pending state logic",
-    "Adding the Approval section to the admin interface (separate feature request)"
+    "Fixing actual backend connectivity issues",
+    "Replacing the connection gate with alternative error handling",
+    "Modifying retry logic or connection diagnostics elsewhere in the app",
+    "Changing authentication flow or approval processes"
   ],
   "imageRequirements": {
     "required": [],

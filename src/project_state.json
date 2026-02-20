@@ -1,43 +1,32 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "RentIQ Udaipur - a web app with Internet Identity authentication that requires admin approval for new users to access the system",
-  "architectural_notes": [
-    "Internet Identity authentication with blank screen rendering issue on id.ai/#authorize",
-    "Admin approval system required for new user access",
-    "Two deployment links: production (rentiq-udaipur.com) and admin (rentiq-udaipur-x18.caffeine.xyz)"
-  ],
+  "summary": "RentIQ Udaipur property rental application with dashboard and modules",
+  "architectural_notes": [],
   "known_issues": [
-    "Internet Identity authorization page shows blank white screen instead of login interface with passkey/Google/Apple/Microsoft options"
+    "Connection error UI is blocking access to the main dashboard and modules"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-debug-and-fix-the-internet-identity-authorization-page-id-ai-authorize-that-currently-displays-a-blank-white-screen-instead-of-the-login-interface-with-passkey-google-apple-microsoft-options",
-      "title": "Debug and fix the Internet Identity authorization page (id.ai/#authorize) that currently displays a blank white screen instead of the login interface with passkey/Google/Apple/Microsoft options",
+      "id": "feature-remove-the-backendconnectiongate-component-wrapper-from-the-app-tsx-router-configuration-to-prevent-connection-diagnostics-ui-from-blocking-access-to-the-dashboard-and-other-application-modules",
+      "title": "Remove the BackendConnectionGate component wrapper from the App.tsx router configuration to prevent connection diagnostics UI from blocking access to the dashboard and other application modules",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-verify-the-internet-identity-component-initialization-and-ensure-the-authentication-flow-properly-displays-in-iframe-popup-window-mode",
-      "title": "Verify the Internet Identity component initialization and ensure the authentication flow properly displays in iframe/popup/window mode",
+      "id": "feature-remove-the-backendconnectiongate-tsx-component-file-from-frontend-src-components-common-since-it-is-no-longer-used",
+      "title": "Remove the BackendConnectionGate.tsx component file from frontend/src/components/common/ since it is no longer used",
       "reqIds": [
         "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-the-internet-identity-authentication-integration-works-correctly-in-both-admin-mode-rentiq-udaipur-x18-caffeine-xyz-and-production-mode-rentiq-udaipur-com",
-      "title": "Ensure the Internet Identity authentication integration works correctly in both admin mode (rentiq-udaipur-x18.caffeine.xyz) and production mode (rentiq-udaipur.com)",
-      "reqIds": [
-        "REQ-3"
       ],
       "version": 1
     }
   ],
   "new_feature_requests": [],
+  "gameProjectType": "none",
   "projectName": "RentIQ Udaipur",
   "clarification_mode": "instant",
   "clarification_rounds": 0

@@ -24,14 +24,17 @@ import {
   ExternalLink,
   FileText,
   Shield,
-  TestTube
+  TestTube,
+  Activity,
+  TrendingUp,
+  Zap
 } from 'lucide-react';
 import { getDiagnosticLog, logAuthEvent } from '../../utils/runtimeDiagnostics';
 import DiagnosticsReportDialog from './DiagnosticsReportDialog';
 import { useState } from 'react';
 
 /**
- * Build Info panel with enhanced Internet Identity diagnostics, manual authentication test button, browser compatibility checks, and comprehensive troubleshooting guidance for blank screen issues.
+ * Build Info panel with enhanced backend connection diagnostics, real-time health monitoring, manual connection tests, and comprehensive troubleshooting guidance.
  */
 export default function BuildInfo() {
   const navigate = useNavigate();
@@ -43,11 +46,14 @@ export default function BuildInfo() {
     retry, 
     canRetry,
     retryCount,
-    elapsedTime
+    elapsedTime,
+    nextRetryIn,
+    connectionDiagnostics,
   } = useActorWithConnection();
   const { login, loginStatus, identity } = useInternetIdentity();
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [testingAuth, setTestingAuth] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
 
   const buildMetadataQuery = useQuery({
     queryKey: ['buildMetadata'],
@@ -66,9 +72,38 @@ export default function BuildInfo() {
     e.type === 'auth-popup-blocked' || 
     e.type === 'auth-timeout'
   );
+  const connectionErrors = diagnosticLog.filter(e =>
+    e.type === 'connection-failure' ||
+    e.type === 'actor-timeout' ||
+    e.type === 'actor-failure'
+  );
 
   const handleRetry = async () => {
     await retry();
+  };
+
+  const handleTestConnection = async () => {
+    if (!actor) return;
+    
+    setTestingConnection(true);
+    const startTime = Date.now();
+    
+    try {
+      console.log('=== Manual Connection Test ===');
+      console.log('Testing backend health check...');
+      console.log('Timestamp:', new Date().toISOString());
+      
+      await actor.healthCheck();
+      
+      const responseTime = Date.now() - startTime;
+      console.log('✓ Connection test successful');
+      console.log('Response time:', responseTime, 'ms');
+    } catch (error: any) {
+      console.error('=== Manual Connection Test Failed ===');
+      console.error('Error:', error);
+    } finally {
+      setTestingConnection(false);
+    }
   };
 
   const handleTestAuth = async () => {
@@ -130,8 +165,46 @@ export default function BuildInfo() {
                   <Alert>
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <AlertTitle>Connected</AlertTitle>
-                    <AlertDescription>
-                      Backend is ready and responding normally.
+                    <AlertDescription className="space-y-2">
+                      <p>Backend is ready and responding normally.</p>
+                      
+                      {/* Connection Metrics */}
+                      {connectionDiagnostics.totalAttempts > 0 && (
+                        <div className="text-xs space-y-1 p-2 bg-muted rounded">
+                          <div className="font-semibold">Connection Metrics:</div>
+                          <div className="flex items-center gap-2">
+                            <Activity className="h-3 w-3" />
+                            <span>
+                              {connectionDiagnostics.successfulAttempts} successful / {connectionDiagnostics.totalAttempts} total
+                            </span>
+                          </div>
+                          {connectionDiagnostics.averageResponseTime && (
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-3 w-3" />
+                              <span>Avg response: {Math.round(connectionDiagnostics.averageResponseTime)}ms</span>
+                            </div>
+                          )}
+                          {connectionDiagnostics.lastSuccessTimestamp && (
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-3 w-3" />
+                              <span>
+                                Last success: {new Date(connectionDiagnostics.lastSuccessTimestamp).toLocaleTimeString()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      <Button
+                        onClick={handleTestConnection}
+                        disabled={testingConnection}
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                      >
+                        <Zap className="h-4 w-4 mr-2" />
+                        {testingConnection ? 'Testing...' : 'Test Connection Now'}
+                      </Button>
                     </AlertDescription>
                   </Alert>
                 ) : (
@@ -148,24 +221,55 @@ export default function BuildInfo() {
                         <div className="flex items-center gap-2 text-sm">
                           <Clock className="h-4 w-4" />
                           <span>{elapsedTime}s elapsed</span>
-                          {retryCount > 0 && <span>• Attempt {retryCount}/3</span>}
+                          {retryCount > 0 && <span>• Attempt {retryCount}/5</span>}
                         </div>
+                        {nextRetryIn > 0 && (
+                          <div className="text-sm text-muted-foreground">
+                            Next retry in {nextRetryIn}s...
+                          </div>
+                        )}
                       </div>
                       {lastError && (
                         <p className="text-sm font-mono bg-destructive/10 p-2 rounded">
                           {lastError}
                         </p>
                       )}
+                      
+                      {/* Connection Diagnostics */}
+                      {connectionDiagnostics.totalAttempts > 0 && (
+                        <div className="text-xs space-y-1 p-2 bg-muted/50 rounded">
+                          <div className="font-semibold">Connection Diagnostics:</div>
+                          <div>Total attempts: {connectionDiagnostics.totalAttempts}</div>
+                          <div>Successful: {connectionDiagnostics.successfulAttempts}</div>
+                          <div>Failed: {connectionDiagnostics.failedAttempts}</div>
+                        </div>
+                      )}
+                      
                       <Button 
                         onClick={handleRetry} 
-                        disabled={!canRetry}
+                        disabled={!canRetry || nextRetryIn > 0}
                         variant="outline" 
                         size="sm"
                         className="w-full"
                       >
                         <RefreshCw className="h-4 w-4 mr-2" />
-                        {canRetry ? 'Retry Connection' : 'Max Retries Reached'}
+                        {nextRetryIn > 0 
+                          ? `Retrying in ${nextRetryIn}s...`
+                          : canRetry 
+                            ? 'Retry Connection' 
+                            : 'Max Retries Reached'}
                       </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {connectionErrors.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Connection Issues Detected</AlertTitle>
+                    <AlertDescription className="text-xs space-y-1">
+                      <p>{connectionErrors.length} connection error(s) logged</p>
+                      <p>Check diagnostics for details</p>
                     </AlertDescription>
                   </Alert>
                 )}
@@ -228,8 +332,11 @@ export default function BuildInfo() {
               {/* Build Metadata */}
               {buildMetadataQuery.data && (
                 <div className="space-y-3">
-                  <h3 className="font-semibold">Build Metadata</h3>
-                  <div className="space-y-2 text-sm">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Build Metadata
+                  </h3>
+                  <div className="text-sm space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Build Time:</span>
                       <span className="font-mono">
@@ -254,95 +361,76 @@ export default function BuildInfo() {
 
               <Separator />
 
-              {/* Quick Actions */}
+              {/* Diagnostics */}
               <div className="space-y-3">
-                <h3 className="font-semibold">Quick Actions</h3>
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => navigate({ to: '/inventory' })}
-                  >
-                    <Package className="h-4 w-4 mr-2" />
-                    Go to Inventory
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => setShowDiagnostics(true)}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    View Diagnostics
-                    {hasErrors && (
-                      <span className="ml-auto bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded">
-                        {diagnosticLog.length}
-                      </span>
-                    )}
-                  </Button>
-                </div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Diagnostics
+                </h3>
+                
+                {hasErrors ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Issues Detected</AlertTitle>
+                    <AlertDescription>
+                      {diagnosticLog.length} diagnostic entries captured
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertTitle>No Issues</AlertTitle>
+                    <AlertDescription>
+                      Application is running normally
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <Button
+                  onClick={() => setShowDiagnostics(true)}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Full Diagnostics Report
+                </Button>
               </div>
 
               <Separator />
 
-              {/* Deployment Checklist */}
+              {/* Help Links */}
               <div className="space-y-3">
-                <h3 className="font-semibold">Post-Deploy Verification</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Backend connection established</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Fast connectivity probe implemented</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>In-app retry without page reload</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Progressive status messages</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Internet Identity diagnostics enabled</span>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Documentation Link */}
-              <div className="space-y-3">
-                <h3 className="font-semibold">Documentation</h3>
+                <h3 className="font-semibold">Help & Documentation</h3>
                 <div className="space-y-2">
                   <Button
                     variant="outline"
+                    size="sm"
                     className="w-full justify-start"
                     asChild
                   >
                     <a
-                      href="https://github.com/dfinity/icp-js-core"
+                      href="https://internetcomputer.org/docs/current/developer-docs/getting-started/overview-of-icp"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       <ExternalLink className="h-4 w-4 mr-2" />
-                      ICP JavaScript SDK Docs
+                      Internet Computer Documentation
                     </a>
                   </Button>
                   <Button
                     variant="outline"
+                    size="sm"
                     className="w-full justify-start"
                     asChild
                   >
                     <a
-                      href="https://identity.ic0.app/"
+                      href="https://identity.ic0.app/faq"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       <ExternalLink className="h-4 w-4 mr-2" />
-                      Internet Identity Help
+                      Internet Identity FAQ
                     </a>
                   </Button>
                 </div>

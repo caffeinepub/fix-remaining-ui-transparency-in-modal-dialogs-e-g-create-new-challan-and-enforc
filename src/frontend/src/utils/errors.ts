@@ -1,4 +1,4 @@
-// Enhanced error normalization utilities with error classification
+// Enhanced error normalization utilities with expanded error classification
 
 export type ErrorCategory =
   | 'actor-unavailable'
@@ -7,30 +7,59 @@ export type ErrorCategory =
   | 'network'
   | 'connection'
   | 'timeout'
+  | 'probe-failure'
+  | 'canister-unreachable'
+  | 'initialization-failure'
   | 'unknown';
 
 export interface ClassifiedError {
   category: ErrorCategory;
   message: string;
   originalError: unknown;
+  troubleshooting?: string[];
 }
 
 /**
- * Classify error into categories for better handling
+ * Classify error into categories for better handling with troubleshooting guidance
  */
 export function classifyError(error: unknown): ClassifiedError {
   const message = normalizeError(error);
 
-  // Connection/probe failures
+  // Probe failures
   if (
     message.includes('Probe timeout') ||
-    message.includes('Connectivity probe failed') ||
-    message.includes('Unable to reach backend')
+    message.includes('Connectivity probe failed')
+  ) {
+    return {
+      category: 'probe-failure',
+      message: 'Unable to establish initial connection to the backend. The health check probe failed.',
+      originalError: error,
+      troubleshooting: [
+        'Check your internet connection',
+        'Verify the backend canister is deployed and running',
+        'Try disabling VPN or proxy if enabled',
+        'Check browser console for CORS or network errors',
+      ],
+    };
+  }
+
+  // Connection failures
+  if (
+    message.includes('Unable to reach backend') ||
+    message.includes('Connection failed') ||
+    message.includes('refused') ||
+    message.includes('unreachable')
   ) {
     return {
       category: 'connection',
-      message: 'Unable to connect to the backend. Please check your network connection and try again.',
+      message: 'Unable to connect to the backend. The canister may be unreachable or not deployed.',
       originalError: error,
+      troubleshooting: [
+        'Verify the backend canister is deployed',
+        'Check if the Internet Computer network is accessible',
+        'Try accessing from a different network',
+        'Contact support if the issue persists',
+      ],
     };
   }
 
@@ -42,8 +71,32 @@ export function classifyError(error: unknown): ClassifiedError {
   ) {
     return {
       category: 'timeout',
-      message: 'The operation is taking longer than expected. Please wait or try again.',
+      message: 'The operation is taking longer than expected. The backend may be slow to respond or initializing.',
       originalError: error,
+      troubleshooting: [
+        'Wait a moment and try again',
+        'Check your network speed',
+        'The canister may be initializing after deployment',
+        'Try again in a few minutes',
+      ],
+    };
+  }
+
+  // Canister unreachable
+  if (
+    message.includes('canister') &&
+    (message.includes('not found') || message.includes('does not exist'))
+  ) {
+    return {
+      category: 'canister-unreachable',
+      message: 'Backend canister not found. The canister may not be deployed or the canister ID is incorrect.',
+      originalError: error,
+      troubleshooting: [
+        'Verify the canister is deployed',
+        'Check the canister ID configuration',
+        'Ensure you are accessing the correct deployment URL',
+        'Contact the administrator',
+      ],
     };
   }
 
@@ -53,6 +106,11 @@ export function classifyError(error: unknown): ClassifiedError {
       category: 'actor-unavailable',
       message: 'System is initializing. Please wait a moment and try again.',
       originalError: error,
+      troubleshooting: [
+        'Wait a few seconds for initialization to complete',
+        'Refresh the page',
+        'Check the Build Info panel for actor status',
+      ],
     };
   }
 
@@ -67,6 +125,11 @@ export function classifyError(error: unknown): ClassifiedError {
       category: 'authorization',
       message: 'You need to sign in to perform this action.',
       originalError: error,
+      troubleshooting: [
+        'Sign in with Internet Identity',
+        'Check if your session has expired',
+        'Verify you have the required permissions',
+      ],
     };
   }
 
@@ -98,6 +161,12 @@ export function classifyError(error: unknown): ClassifiedError {
       category: 'network',
       message: 'Network error. Please check your connection and try again.',
       originalError: error,
+      troubleshooting: [
+        'Check your internet connection',
+        'Try disabling browser extensions',
+        'Check firewall settings',
+        'Try a different browser',
+      ],
     };
   }
 
@@ -106,6 +175,12 @@ export function classifyError(error: unknown): ClassifiedError {
     category: 'unknown',
     message: message || 'An unexpected error occurred. Please try again.',
     originalError: error,
+    troubleshooting: [
+      'Try refreshing the page',
+      'Clear browser cache and cookies',
+      'Check the Build Info panel for diagnostics',
+      'Contact support if the issue persists',
+    ],
   };
 }
 
@@ -162,7 +237,13 @@ export function isValidationError(error: unknown): boolean {
  */
 export function isConnectionError(error: unknown): boolean {
   const category = classifyError(error).category;
-  return category === 'connection' || category === 'timeout' || category === 'network';
+  return (
+    category === 'connection' ||
+    category === 'timeout' ||
+    category === 'network' ||
+    category === 'probe-failure' ||
+    category === 'canister-unreachable'
+  );
 }
 
 /**
@@ -171,4 +252,12 @@ export function isConnectionError(error: unknown): boolean {
 export function getUserFriendlyError(error: unknown, fallback?: string): string {
   const classified = classifyError(error);
   return classified.message || fallback || 'An error occurred. Please try again.';
+}
+
+/**
+ * Get troubleshooting steps for an error
+ */
+export function getTroubleshootingSteps(error: unknown): string[] {
+  const classified = classifyError(error);
+  return classified.troubleshooting || [];
 }

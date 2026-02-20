@@ -1,7 +1,6 @@
 import { createRouter, RouterProvider, createRoute, createRootRoute, Outlet } from '@tanstack/react-router';
 import AppLayout from './components/layout/AppLayout';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
-import BackendConnectionGate from './components/common/BackendConnectionGate';
 import AuthApprovalGate from './components/common/AuthApprovalGate';
 import DashboardPage from './pages/DashboardPage';
 import InventoryPage from './pages/InventoryPage';
@@ -18,16 +17,14 @@ import { initializeRuntimeDiagnostics } from './utils/runtimeDiagnostics';
 // Initialize runtime diagnostics early
 initializeRuntimeDiagnostics();
 
-// Single root route with BackendConnectionGate and AuthApprovalGate wrapping AppLayout
+// Single root route with AuthApprovalGate wrapping AppLayout
 const rootRoute = createRootRoute({
   component: () => (
-    <BackendConnectionGate>
-      <AuthApprovalGate>
-        <AppLayout>
-          <Outlet />
-        </AppLayout>
-      </AuthApprovalGate>
-    </BackendConnectionGate>
+    <AuthApprovalGate>
+      <AppLayout>
+        <Outlet />
+      </AppLayout>
+    </AuthApprovalGate>
   ),
 });
 

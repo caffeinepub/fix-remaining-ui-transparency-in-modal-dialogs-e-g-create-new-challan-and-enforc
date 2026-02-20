@@ -1,7 +1,7 @@
 import { safeErrorLog, safeStringify } from './safeSerialize';
 
 /**
- * Runtime diagnostics helper with enhanced Internet Identity authentication lifecycle tracking, blank screen detection, authorization flow diagnostics, and comprehensive error context capture for troubleshooting deployment and authentication failures.
+ * Runtime diagnostics helper with enhanced Internet Identity authentication lifecycle tracking, blank screen detection, authorization flow diagnostics, connection probe tracking, and comprehensive error context capture for troubleshooting deployment and authentication failures.
  */
 
 interface DiagnosticContext {
@@ -12,10 +12,12 @@ interface DiagnosticContext {
   environment: string;
   actorStatus?: string;
   authStatus?: string;
+  connectionAttempt?: number;
+  responseTime?: number;
 }
 
 interface DiagnosticEntry {
-  type: 'error' | 'unhandledrejection' | 'actor-init' | 'actor-probe' | 'actor-timeout' | 'actor-retry' | 'actor-failure' | 'auth-init' | 'auth-blank-screen' | 'auth-popup-blocked' | 'auth-timeout';
+  type: 'error' | 'unhandledrejection' | 'actor-init' | 'actor-probe' | 'actor-timeout' | 'actor-retry' | 'actor-failure' | 'auth-init' | 'auth-blank-screen' | 'auth-popup-blocked' | 'auth-timeout' | 'connection-probe' | 'connection-success' | 'connection-failure';
   context: DiagnosticContext;
   error: string;
   timestamp: number;
@@ -24,9 +26,10 @@ interface DiagnosticEntry {
 interface SessionContext {
   actorStatus: string;
   authStatus: string;
+  connectionAttempt: number;
 }
 
-const MAX_LOG_ENTRIES = 50;
+const MAX_LOG_ENTRIES = 100; // Increased from 50
 const STORAGE_KEY = 'rentiq_diagnostics_log';
 
 // In-memory buffer
@@ -36,6 +39,7 @@ let diagnosticLog: DiagnosticEntry[] = [];
 let sessionContext: SessionContext = {
   actorStatus: 'unknown',
   authStatus: 'unknown',
+  connectionAttempt: 0,
 };
 
 /**
@@ -54,6 +58,7 @@ function getDiagnosticContext(): DiagnosticContext {
     environment: import.meta.env.MODE || 'unknown',
     actorStatus: sessionContext.actorStatus,
     authStatus: sessionContext.authStatus,
+    connectionAttempt: sessionContext.connectionAttempt,
   };
 }
 
@@ -112,7 +117,35 @@ export function logActorInitEvent(
     failure: 'actor-failure',
   };
 
+  // Increment connection attempt counter for probes and retries
+  if (event === 'probe' || event === 'retry') {
+    sessionContext.connectionAttempt += 1;
+  }
+
   logErrorWithContext(eventTypes[event], details || `Actor initialization ${event}`);
+}
+
+/**
+ * Log connection probe events with response time tracking
+ */
+export function logConnectionProbe(
+  success: boolean,
+  responseTime: number,
+  details?: string
+) {
+  const type: DiagnosticEntry['type'] = success ? 'connection-success' : 'connection-failure';
+  const message = details || (success ? 'Connection probe succeeded' : 'Connection probe failed');
+  
+  const context = getDiagnosticContext();
+  context.responseTime = responseTime;
+  
+  console.log(`=== Connection Probe ${success ? 'Success' : 'Failure'} ===`);
+  console.log('Response Time:', responseTime, 'ms');
+  console.log('Details:', message);
+  console.log('Attempt:', context.connectionAttempt);
+  console.log('===========================================');
+  
+  logErrorWithContext(type, message, context);
 }
 
 /**
@@ -168,6 +201,7 @@ export function getDiagnosticLog(): DiagnosticEntry[] {
  */
 export function clearDiagnosticLog() {
   diagnosticLog = [];
+  sessionContext.connectionAttempt = 0;
   try {
     sessionStorage.removeItem(STORAGE_KEY);
   } catch (e) {
