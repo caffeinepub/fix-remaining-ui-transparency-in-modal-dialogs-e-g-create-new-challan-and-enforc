@@ -2,10 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-remove-the-backendconnectiongate-component-wrapper-from-the-app-tsx-router-configuration-to-prevent-connection-diagnostics-ui-from-blocking-access-to-the-dashboard-and-other-application-modules",
-      "featureTitle": "Remove the BackendConnectionGate component wrapper from the App.tsx router configuration to prevent connection diagnostics UI from blocking access to the dashboard and other application modules",
+      "featureId": "feature-remove-all-internet-identity-authentication-logic-from-the-frontend-including-signinscreen-signinrequireddialog-and-all-authentication-related-components",
+      "featureTitle": "Remove all Internet Identity authentication logic from the frontend including SignInScreen, SignInRequiredDialog, and all authentication-related components",
       "files": [
-        "frontend/src/App.tsx"
+        "frontend/src/components/common/SignInRequiredDialog.tsx",
+        "frontend/src/components/common/SignInScreen.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -23,10 +24,11 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-remove-the-backendconnectiongate-tsx-component-file-from-frontend-src-components-common-since-it-is-no-longer-used",
-      "featureTitle": "Remove the BackendConnectionGate.tsx component file from frontend/src/components/common/ since it is no longer used",
+      "featureId": "feature-remove-authapprovalgate-component-or-modify-it-to-always-render-children-without-checking-authentication-or-approval-status",
+      "featureTitle": "Remove AuthApprovalGate component or modify it to always render children without checking authentication or approval status",
       "files": [
-        "frontend/src/components/common/BackendConnectionGate.tsx"
+        "frontend/src/App.tsx",
+        "frontend/src/components/common/AuthApprovalGate.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -40,6 +42,137 @@
       ],
       "testIds": [
         "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-remove-useinternetidentity-hook-dependencies-and-replace-all-authentication-state-checks-with-default-authenticated-state-throughout-the-application",
+      "featureTitle": "Remove useInternetIdentity hook dependencies and replace all authentication state checks with default authenticated state throughout the application",
+      "files": [
+        "frontend/src/components/layout/AppLayout.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-remove-admin-role-checks-staff-restrictions-and-approval-status-checks-from-all-components-and-hooks-including-usestaffrestrictions-useappmode-and-useapprovalstatus",
+      "featureTitle": "Remove admin role checks, staff restrictions, and approval status checks from all components and hooks including useStaffRestrictions, useAppMode, and useApprovalStatus",
+      "files": [
+        "frontend/src/components/layout/AppLayout.tsx",
+        "frontend/src/hooks/useApprovalStatus.ts",
+        "frontend/src/hooks/useStaffRestrictions.ts",
+        "frontend/src/pages/AccessManagementPage.tsx",
+        "frontend/src/pages/InventoryPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-remove-usemutationgate-hook-or-modify-it-to-always-return-mutations-as-ready-without-checking-authentication-state",
+      "featureTitle": "Remove useMutationGate hook or modify it to always return mutations as ready without checking authentication state",
+      "files": [
+        "frontend/src/hooks/useMutationGate.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-6"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-modify-useactor-hook-to-create-backend-actor-instances-without-requiring-internet-identity-authentication-or-admin-token-parameters",
+      "featureTitle": "Modify useActor hook to create backend actor instances without requiring Internet Identity authentication or admin token parameters",
+      "files": [
+        "frontend/src/hooks/useActorWithConnection.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-7"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-remove-approvalrequiredscreen-component-and-all-approval-request-functionality-from-the-frontend",
+      "featureTitle": "Remove ApprovalRequiredScreen component and all approval request functionality from the frontend",
+      "files": [
+        "frontend/src/components/common/ApprovalRequiredScreen.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-8"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-remove-usebootstrapadmin-hook-and-all-admin-bootstrapping-logic-from-the-frontend",
+      "featureTitle": "Remove useBootstrapAdmin hook and all admin bootstrapping logic from the frontend",
+      "files": [
+        "frontend/src/components/common/AuthApprovalGate.tsx",
+        "frontend/src/hooks/useBootstrapAdmin.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-9"
       ],
       "confidence": "high"
     }

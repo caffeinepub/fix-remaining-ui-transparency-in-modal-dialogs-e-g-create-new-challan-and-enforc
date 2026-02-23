@@ -13,15 +13,10 @@ import type { Principal } from '@icp-sdk/core/principal';
 export type ApprovalStatus = { 'pending' : null } |
   { 'approved' : null } |
   { 'rejected' : null };
-export interface BecomeAdminResponse {
-  'isAlreadyAdmin' : boolean,
-  'error' : [] | [string],
-  'success' : boolean,
-}
 export interface BuildMetadata {
   'gitCommitHash' : string,
   'buildTime' : bigint,
-  'canisterId' : Principal,
+  'canisterId' : string,
 }
 export interface BulkChallanCreateResult {
   'id' : string,
@@ -114,7 +109,6 @@ export interface UserApprovalInfo {
   'status' : ApprovalStatus,
   'principal' : Principal,
 }
-export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -174,7 +168,6 @@ export interface _SERVICE {
     undefined
   >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'becomeBootstrapAdmin' : ActorMethod<[boolean], BecomeAdminResponse>,
   'bulkAddPayments' : ActorMethod<
     [Array<Payment>],
     Array<PaymentBulkCreateResult>
@@ -182,6 +175,10 @@ export interface _SERVICE {
   'bulkAddPettyCash' : ActorMethod<
     [Array<PettyCash>],
     Array<PettyCashBulkCreateResult>
+  >,
+  'bulkCreateChallans' : ActorMethod<
+    [Array<Challan>],
+    Array<BulkChallanCreateResult>
   >,
   'bulkCreateClients' : ActorMethod<
     [Array<Client>],
@@ -192,10 +189,6 @@ export interface _SERVICE {
     Array<InventoryBulkCreateResult>
   >,
   'clearPettyCashAttachments' : ActorMethod<[bigint], undefined>,
-  'createBulkChallans' : ActorMethod<
-    [Array<Challan>],
-    Array<BulkChallanCreateResult>
-  >,
   'createChallan' : ActorMethod<
     [
       string,
@@ -227,7 +220,6 @@ export interface _SERVICE {
     Array<PettyCashAttachment>
   >,
   'getBuildMetadata' : ActorMethod<[], BuildMetadata>,
-  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getChallansByClient' : ActorMethod<[string], Array<Challan>>,
   'getChallansByDateRange' : ActorMethod<[bigint, bigint], Array<Challan>>,
@@ -235,10 +227,7 @@ export interface _SERVICE {
   'getPaymentsByClient' : ActorMethod<[string], Array<Payment>>,
   'getPaymentsByDateRange' : ActorMethod<[bigint, bigint], Array<Payment>>,
   'getPettyCashByDateRange' : ActorMethod<[bigint, bigint], Array<PettyCash>>,
-  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'healthCheck' : ActorMethod<[], bigint>,
-  'isAdminOrBootstrapAdminExternal' : ActorMethod<[], boolean>,
-  'isBootstrapAdmin' : ActorMethod<[], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isCallerApproved' : ActorMethod<[], boolean>,
   'listApprovals' : ActorMethod<[], Array<UserApprovalInfo>>,
@@ -249,7 +238,6 @@ export interface _SERVICE {
   >,
   'requestApproval' : ActorMethod<[], undefined>,
   'revertChallanToActive' : ActorMethod<[string], undefined>,
-  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setApproval' : ActorMethod<[Principal, ApprovalStatus], undefined>,
   'updateChallan' : ActorMethod<
     [
@@ -264,11 +252,6 @@ export interface _SERVICE {
     ],
     undefined
   >,
-  /**
-   * / Update rent date of all existing challans by re-uploading original csv file.
-   * / This is an admin-only operation to restore corrupted rent dates.
-   */
-  'updateChallanRentDates' : ActorMethod<[Array<Challan>], undefined>,
   'updateInventoryItem' : ActorMethod<[string, number, number], undefined>,
   'updatePettyCash' : ActorMethod<
     [

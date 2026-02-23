@@ -14,11 +14,6 @@ export class ExternalBlob {
     static fromBytes(blob: Uint8Array<ArrayBuffer>): ExternalBlob;
     withUploadProgress(onProgress: (percentage: number) => void): ExternalBlob;
 }
-export interface BecomeAdminResponse {
-    isAlreadyAdmin: boolean;
-    error?: string;
-    success: boolean;
-}
 export interface PettyCashAttachment {
     id: string;
     blob: ExternalBlob;
@@ -31,6 +26,12 @@ export interface PettyCashBulkCreateResult {
 }
 export interface ClientBulkCreateResult {
     created?: Client;
+    name: string;
+    error?: string;
+    success: boolean;
+}
+export interface InventoryBulkCreateResult {
+    created?: InventoryItem;
     name: string;
     error?: string;
     success: boolean;
@@ -59,16 +60,10 @@ export interface Payment {
     site: string;
     amount: number;
 }
-export interface InventoryBulkCreateResult {
-    created?: InventoryItem;
-    name: string;
-    error?: string;
-    success: boolean;
-}
 export interface BuildMetadata {
     gitCommitHash: string;
     buildTime: bigint;
-    canisterId: Principal;
+    canisterId: string;
 }
 export interface InventoryItem {
     dailyRate: number;
@@ -117,9 +112,6 @@ export interface ChallanItem {
     itemName: string;
     quantity: number;
 }
-export interface UserProfile {
-    name: string;
-}
 export interface PaymentBulkCreateResult {
     id: string;
     created?: Payment;
@@ -143,13 +135,12 @@ export interface backendInterface {
     addPayment(id: string, date: bigint, client: string, mode: string, amount: number, referenceNumber: string, createdAt: bigint, site: string): Promise<void>;
     addPettyCash(date: bigint, openingBalance: number, cashFromMd: number, expenses: number, staffAdvance: number, handoverToMd: number, netChange: number, closingBalance: number, transferFromCashEquivalents: number, categoryExpenses: Array<PettyCashCategory>, remarks: string, createdAt: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    becomeBootstrapAdmin(isAdminDomain: boolean): Promise<BecomeAdminResponse>;
     bulkAddPayments(batch: Array<Payment>): Promise<Array<PaymentBulkCreateResult>>;
     bulkAddPettyCash(batch: Array<PettyCash>): Promise<Array<PettyCashBulkCreateResult>>;
+    bulkCreateChallans(batch: Array<Challan>): Promise<Array<BulkChallanCreateResult>>;
     bulkCreateClients(batch: Array<Client>): Promise<Array<ClientBulkCreateResult>>;
     bulkCreateInventoryItems(batch: Array<InventoryItem>): Promise<Array<InventoryBulkCreateResult>>;
     clearPettyCashAttachments(date: bigint): Promise<void>;
-    createBulkChallans(batch: Array<Challan>): Promise<Array<BulkChallanCreateResult>>;
     createChallan(id: string, clientName: string, venue: string, items: Array<ChallanItem>, freight: number, numberOfDays: number, rentDate: bigint, site: string, creationDate: bigint): Promise<void>;
     deleteChallan(id: string): Promise<void>;
     deleteClient(name: string): Promise<void>;
@@ -162,7 +153,6 @@ export interface backendInterface {
     getAllPettyCashRecordsWithAttachments(): Promise<Array<PettyCashWithAttachments>>;
     getAttachmentsForPettyCashRecord(date: bigint): Promise<Array<PettyCashAttachment>>;
     getBuildMetadata(): Promise<BuildMetadata>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getChallansByClient(client: string): Promise<Array<Challan>>;
     getChallansByDateRange(startDate: bigint, endDate: bigint): Promise<Array<Challan>>;
@@ -170,10 +160,7 @@ export interface backendInterface {
     getPaymentsByClient(client: string): Promise<Array<Payment>>;
     getPaymentsByDateRange(startDate: bigint, endDate: bigint): Promise<Array<Payment>>;
     getPettyCashByDateRange(startDate: bigint, endDate: bigint): Promise<Array<PettyCash>>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
     healthCheck(): Promise<bigint>;
-    isAdminOrBootstrapAdminExternal(): Promise<boolean>;
-    isBootstrapAdmin(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
     isCallerApproved(): Promise<boolean>;
     listApprovals(): Promise<Array<UserApprovalInfo>>;
@@ -181,14 +168,8 @@ export interface backendInterface {
     removeAttachmentFromPettyCashRecord(date: bigint, attachmentId: string): Promise<Array<PettyCashAttachment>>;
     requestApproval(): Promise<void>;
     revertChallanToActive(_id: string): Promise<void>;
-    saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setApproval(user: Principal, status: ApprovalStatus): Promise<void>;
     updateChallan(id: string, clientName: string, venue: string, items: Array<ChallanItem>, freight: number, numberOfDays: number, rentDate: bigint, site: string): Promise<void>;
-    /**
-     * / Update rent date of all existing challans by re-uploading original csv file.
-     * / This is an admin-only operation to restore corrupted rent dates.
-     */
-    updateChallanRentDates(challanData: Array<Challan>): Promise<void>;
     updateInventoryItem(name: string, totalQuantity: number, dailyRate: number): Promise<void>;
     updatePettyCash(originalDate: bigint, openingBalance: number, cashFromMd: number, expenses: number, staffAdvance: number, handoverToMd: number, netChange: number, closingBalance: number, transferFromCashEquivalents: number, categoryExpenses: Array<PettyCashCategory>, remarks: string): Promise<void>;
 }

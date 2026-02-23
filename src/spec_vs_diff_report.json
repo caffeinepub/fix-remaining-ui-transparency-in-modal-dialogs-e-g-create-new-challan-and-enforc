@@ -1,24 +1,61 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-20T11:26:04.119Z",
-  "summary": "The diff shows App.tsx was modified to remove BackendConnectionGate wrapper, but the BackendConnectionGate.tsx component file itself was not deleted as required by REQ-2.",
+  "generatedAt": "2026-02-22T18:42:27.409Z",
+  "summary": "The diff shows extensive removal of authentication logic across frontend and backend. However, the backend (main.mo) still retains significant authentication-related code including access control mixins, user approval logic, and authentication-gated endpoints. Frontend changes appear complete with authentication components disabled/stubbed and hooks modified to bypass authentication. A migration module was added to handle state transitions.",
   "missing_requirements": [
     {
-      "id": "REQ-2",
-      "requirement": "Remove the BackendConnectionGate.tsx component file from frontend/src/components/common/ since it is no longer used",
-      "reason": "The diff shows BackendConnectionGate.tsx is listed under MODIFIED FILES but no deletion occurred. The file should be in REMOVED FILES but it is not.",
+      "id": "REQ-5",
+      "requirement": "Remove access control, user approval, and authentication mixins from backend/main.mo and disable all authentication checks in backend endpoints",
+      "reason": "Backend main.mo still includes AccessControl and MixinAuthorization imports and initialization, includes UserApproval state and methods (isCallerApproved, requestApproval, setApproval, listApprovals), and retains authentication checks like 'if (not (AccessControl.hasPermission(accessControlState, caller, #admin)))' that trap unauthorized access",
       "evidence": [
-        "frontend/src/components/common/BackendConnectionGate.tsx"
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-10",
+      "requirement": "Remove UserProfile data type and all user management endpoints from backend/main.mo including approval, profile, and admin check methods",
+      "reason": "Backend main.mo still contains approval-related methods (isCallerApproved, requestApproval, setApproval, listApprovals) that should be removed according to the requirement",
+      "evidence": [
+        "backend/main.mo"
       ]
     }
   ],
-  "hallucinated_features": [],
-  "confidence": 0.95,
+  "hallucinated_features": [
+    {
+      "description": "Migration module added to handle state transitions from old actor structure to new",
+      "reason": "Migration module (backend/migration.mo) was not requested in any requirement. The BuildRequest only asks for removal of authentication logic, not adding migration infrastructure",
+      "evidence": [
+        "backend/migration.mo"
+      ]
+    },
+    {
+      "description": "Access Management page implementation as a stub/disabled component",
+      "reason": "REQ-4 states 'Access Management page is removed or accessible to all' but the diff shows a new AccessManagementPage.tsx was created showing a disabled message. The requirement could be satisfied by removal (not creating a stub page) or making it accessible without restrictions",
+      "evidence": [
+        "frontend/src/pages/AccessManagementPage.tsx"
+      ]
+    }
+  ],
+  "confidence": 0.85,
   "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
     "frontend/src/App.tsx",
-    "frontend/src/components/common/BackendConnectionGate.tsx",
+    "frontend/src/components/common/ApprovalRequiredScreen.tsx",
+    "frontend/src/components/common/AuthApprovalGate.tsx",
+    "frontend/src/components/common/SignInRequiredDialog.tsx",
+    "frontend/src/components/common/SignInScreen.tsx",
+    "frontend/src/components/layout/AppLayout.tsx",
+    "frontend/src/hooks/useActorWithConnection.ts",
+    "frontend/src/hooks/useApprovalStatus.ts",
+    "frontend/src/hooks/useBootstrapAdmin.ts",
+    "frontend/src/hooks/useMutationGate.ts",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/hooks/useStaffRestrictions.ts",
+    "frontend/src/pages/AccessManagementPage.tsx",
+    "frontend/src/pages/InventoryPage.tsx",
     "project_state.json"
   ]
 }

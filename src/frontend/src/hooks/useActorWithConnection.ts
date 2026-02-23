@@ -1,15 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useActor } from './useActor';
-import { updateDiagnosticSessionContext, logActorInitEvent } from '../utils/runtimeDiagnostics';
-import { useInternetIdentity } from './useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
+import { updateDiagnosticSessionContext, logActorInitEvent } from '../utils/runtimeDiagnostics';
 import { createActorWithConfig } from '../config';
 
-const PROBE_TIMEOUT = 8000; // 8 seconds for health check probe (increased from 5s)
-const ACTOR_INIT_TIMEOUT = 20000; // 20 seconds for actor initialization (increased from 15s)
-const MAX_RETRIES = 5; // Increased from 3
-const INITIAL_BACKOFF_MS = 1000; // Start with 1 second
-const MAX_BACKOFF_MS = 16000; // Cap at 16 seconds
+const PROBE_TIMEOUT = 8000;
+const ACTOR_INIT_TIMEOUT = 20000;
+const MAX_RETRIES = 5;
+const INITIAL_BACKOFF_MS = 1000;
+const MAX_BACKOFF_MS = 16000;
 
 export type ActorConnectionState = 
   | 'probing' 
@@ -29,7 +27,7 @@ export type ConnectionStage =
   | 'Connection failed';
 
 interface UseActorWithConnectionReturn {
-  actor: ReturnType<typeof useActor>['actor'];
+  actor: any;
   isFetching: boolean;
   connectionState: ActorConnectionState;
   connectionStage: ConnectionStage;
@@ -49,18 +47,14 @@ interface UseActorWithConnectionReturn {
 }
 
 /**
- * Enhanced wrapper around useActor that adds:
- * - Fast connectivity probe using healthCheck query
- * - Exponential backoff retry mechanism
- * - Bounded-time initialization with progressive status
- * - In-app retry without page reload
- * - Comprehensive connection diagnostics
+ * Enhanced wrapper that creates anonymous actor without authentication.
+ * Includes connectivity probe, exponential backoff retry, and connection diagnostics.
  */
 export function useActorWithConnection(): UseActorWithConnectionReturn {
-  const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   
+  const [actor, setActor] = useState<any>(null);
+  const [isFetching, setIsFetching] = useState(true);
   const [connectionState, setConnectionState] = useState<ActorConnectionState>('probing');
   const [connectionStage, setConnectionStage] = useState<ConnectionStage>('Checking connectivity...');
   const [lastError, setLastError] = useState<string | null>(null);
@@ -71,7 +65,6 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
   const [forceRetryTrigger, setForceRetryTrigger] = useState(0);
   const [nextRetryIn, setNextRetryIn] = useState(0);
   
-  // Connection diagnostics
   const [diagnostics, setDiagnostics] = useState({
     totalAttempts: 0,
     successfulAttempts: 0,
@@ -81,13 +74,11 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
     responseTimes: [] as number[],
   });
 
-  // Calculate exponential backoff delay
   const getBackoffDelay = (attempt: number): number => {
     const delay = Math.min(INITIAL_BACKOFF_MS * Math.pow(2, attempt), MAX_BACKOFF_MS);
     return delay;
   };
 
-  // Update elapsed time every second
   useEffect(() => {
     if (connectionState === 'probing' || connectionState === 'initializing') {
       const interval = setInterval(() => {
@@ -97,7 +88,6 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
     }
   }, [connectionState, initStartTime]);
 
-  // Countdown for next retry
   useEffect(() => {
     if (nextRetryIn > 0) {
       const interval = setInterval(() => {
@@ -107,7 +97,6 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
     }
   }, [nextRetryIn]);
 
-  // Fast connectivity probe with enhanced diagnostics
   useEffect(() => {
     if (!probeComplete && connectionState === 'probing') {
       const runProbe = async () => {
@@ -117,20 +106,17 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
           setConnectionStage('Checking connectivity...');
           updateDiagnosticSessionContext({
             actorStatus: 'Probing',
-            authStatus: identity ? 'Authenticated' : 'Anonymous'
+            authStatus: 'Anonymous'
           });
           logActorInitEvent('probe', `Starting connectivity probe (attempt ${retryCount + 1}/${MAX_RETRIES})`);
 
-          // Update diagnostics
           setDiagnostics(prev => ({
             ...prev,
             totalAttempts: prev.totalAttempts + 1,
           }));
 
-          // Create a lightweight anonymous actor just for the health check
           const probeActor = await createActorWithConfig();
           
-          // Race between health check and timeout
           const probePromise = probeActor.healthCheck();
           const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Probe timeout')), PROBE_TIMEOUT)
@@ -138,12 +124,11 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
 
           await Promise.race([probePromise, timeoutPromise]);
           
-          // Probe succeeded - record metrics
           const responseTime = Date.now() - probeStartTime;
           logActorInitEvent('start', `Connectivity probe succeeded in ${responseTime}ms, initializing actor`);
           
           setDiagnostics(prev => {
-            const newResponseTimes = [...prev.responseTimes, responseTime].slice(-10); // Keep last 10
+            const newResponseTimes = [...prev.responseTimes, responseTime].slice(-10);
             const avgResponseTime = newResponseTimes.reduce((a, b) => a + b, 0) / newResponseTimes.length;
             
             return {
@@ -160,7 +145,6 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
           setConnectionStage('Initializing agent...');
           
         } catch (error) {
-          // Probe failed - record failure and classify error
           const responseTime = Date.now() - probeStartTime;
           const errorMsg = error instanceof Error ? error.message : 'Connectivity probe failed';
           
@@ -171,7 +155,6 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
             failedAttempts: prev.failedAttempts + 1,
           }));
           
-          // Classify the error for better user guidance
           let userMessage = 'Unable to reach backend. Please check your network connection.';
           
           if (errorMsg.includes('timeout') || errorMsg.includes('Probe timeout')) {
@@ -187,7 +170,6 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
           setLastError(userMessage);
           updateDiagnosticSessionContext({ actorStatus: 'Probe Failed' });
           
-          // Set up exponential backoff for next retry
           if (retryCount < MAX_RETRIES) {
             const backoffDelay = getBackoffDelay(retryCount);
             setNextRetryIn(Math.ceil(backoffDelay / 1000));
@@ -197,45 +179,53 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
 
       runProbe();
     }
-  }, [probeComplete, connectionState, identity, forceRetryTrigger, retryCount]);
+  }, [probeComplete, connectionState, forceRetryTrigger, retryCount]);
 
-  // Track actor initialization after probe
   useEffect(() => {
-    if (probeComplete && isFetching && !actor) {
-      setConnectionState('initializing');
-      setConnectionStage('Creating actor...');
-      
-      updateDiagnosticSessionContext({
-        actorStatus: 'Initializing',
-        authStatus: identity ? 'Authenticated' : 'Anonymous'
-      });
+    if (probeComplete && !actor) {
+      const initActor = async () => {
+        setIsFetching(true);
+        setConnectionState('initializing');
+        setConnectionStage('Creating actor...');
+        
+        updateDiagnosticSessionContext({
+          actorStatus: 'Initializing',
+          authStatus: 'Anonymous'
+        });
 
-      const timeoutId = setTimeout(() => {
-        if (!actor && isFetching) {
-          setConnectionState('timeout');
-          setConnectionStage('Connection timeout');
-          setLastError('Actor initialization is taking longer than expected. The backend may be slow to respond or initializing.');
-          updateDiagnosticSessionContext({ actorStatus: 'Timeout' });
-          logActorInitEvent('timeout', `Actor initialization timed out after ${ACTOR_INIT_TIMEOUT}ms`);
+        const timeoutId = setTimeout(() => {
+          if (!actor) {
+            setConnectionState('timeout');
+            setConnectionStage('Connection timeout');
+            setLastError('Actor initialization is taking longer than expected. The backend may be slow to respond or initializing.');
+            updateDiagnosticSessionContext({ actorStatus: 'Timeout' });
+            logActorInitEvent('timeout', `Actor initialization timed out after ${ACTOR_INIT_TIMEOUT}ms`);
+          }
+        }, ACTOR_INIT_TIMEOUT);
+
+        try {
+          const newActor = await createActorWithConfig();
+          setActor(newActor);
+          setConnectionState('ready');
+          setConnectionStage('Ready');
+          setLastError(null);
+          setIsFetching(false);
+          updateDiagnosticSessionContext({ actorStatus: 'Ready' });
+          logActorInitEvent('start', 'Actor initialization complete');
+        } catch (error) {
+          setConnectionState('error');
+          setConnectionStage('Connection failed');
+          setLastError(error instanceof Error ? error.message : 'Failed to initialize actor');
+          setIsFetching(false);
+        } finally {
+          clearTimeout(timeoutId);
         }
-      }, ACTOR_INIT_TIMEOUT);
+      };
 
-      return () => clearTimeout(timeoutId);
+      initActor();
     }
-  }, [probeComplete, isFetching, actor, identity]);
+  }, [probeComplete, actor]);
 
-  // Track successful initialization
-  useEffect(() => {
-    if (actor && !isFetching && probeComplete) {
-      setConnectionState('ready');
-      setConnectionStage('Ready');
-      setLastError(null);
-      updateDiagnosticSessionContext({ actorStatus: 'Ready' });
-      logActorInitEvent('start', 'Actor initialization complete');
-    }
-  }, [actor, isFetching, probeComplete]);
-
-  // In-app retry with exponential backoff
   const retry = useCallback(async () => {
     if (retryCount >= MAX_RETRIES) {
       return;
@@ -246,7 +236,6 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
     
     logActorInitEvent('retry', `Scheduling retry attempt ${newRetryCount}/${MAX_RETRIES} with ${backoffDelay}ms backoff`);
     
-    // Wait for backoff period
     setNextRetryIn(Math.ceil(backoffDelay / 1000));
     await new Promise(resolve => setTimeout(resolve, backoffDelay));
     
@@ -258,11 +247,11 @@ export function useActorWithConnection(): UseActorWithConnectionReturn {
     setElapsedTime(0);
     setProbeComplete(false);
     setNextRetryIn(0);
+    setActor(null);
+    setIsFetching(true);
     
-    // Clear actor query cache to force re-initialization
     queryClient.removeQueries({ queryKey: ['actor'] });
     
-    // Trigger probe re-run
     setForceRetryTrigger(prev => prev + 1);
   }, [retryCount, queryClient]);
 

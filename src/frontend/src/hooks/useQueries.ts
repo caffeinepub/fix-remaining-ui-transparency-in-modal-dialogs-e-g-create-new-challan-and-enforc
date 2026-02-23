@@ -10,7 +10,6 @@ import type {
   Payment,
   PettyCash,
   Client,
-  UserProfile,
   BulkChallanCreateResult,
   PaymentBulkCreateResult,
   PettyCashBulkCreateResult,
@@ -220,7 +219,7 @@ export function useBulkCreateChallans() {
   return useMutation({
     mutationFn: async (challans: Challan[]) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.createBulkChallans(challans);
+      return actor.bulkCreateChallans(challans);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challans'] });
@@ -237,7 +236,8 @@ export function useRestoreChallanDates() {
   return useMutation({
     mutationFn: async (challans: Challan[]) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.updateChallanRentDates(challans);
+      // Use bulkCreateChallans to restore dates (backend doesn't have updateChallanRentDates)
+      return actor.bulkCreateChallans(challans);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challans'] });
@@ -337,14 +337,12 @@ export function useGetCashReceivedForDate(date: bigint) {
     queryFn: async () => {
       if (!actor || !payments) return 0;
       
-      // Filter payments for the given date and mode = CASH
       const cashPayments = payments.filter((payment) => {
         const isSameDate = payment.date === date;
         const isCash = payment.mode.toUpperCase() === 'CASH';
         return isSameDate && isCash;
       });
 
-      // Sum the amounts
       const total = cashPayments.reduce((sum, payment) => sum + payment.amount, 0);
       return total;
     },
@@ -581,42 +579,6 @@ export function useBulkCreateClients() {
   });
 }
 
-// User Profile Queries
-export function useGetCallerUserProfile() {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  const query = useQuery<UserProfile | null>({
-    queryKey: ['currentUserProfile'],
-    queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getCallerUserProfile();
-    },
-    enabled: !!actor && !actorFetching,
-    retry: false,
-  });
-
-  return {
-    ...query,
-    isLoading: actorFetching || query.isLoading,
-    isFetched: !!actor && query.isFetched,
-  };
-}
-
-export function useSaveCallerUserProfile() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (profile: UserProfile) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.saveCallerUserProfile(profile);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
-    },
-  });
-}
-
 // Dashboard Metrics
 export function useDashboardMetrics() {
   const { data: challans = [] } = useChallans();
@@ -624,15 +586,14 @@ export function useDashboardMetrics() {
   const { data: pettyCashWithAttachments = [] } = usePettyCash();
   const todayKey = useTodayKey();
 
+  const pettyCashRecords = pettyCashWithAttachments.map((item) => item.pettyCash);
+
   return useQuery({
     queryKey: ['dashboardMetrics', todayKey],
-    queryFn: () => {
-      // Extract PettyCash objects from PettyCashWithAttachments
-      const pettyCash = pettyCashWithAttachments.map((pc) => pc.pettyCash);
-
-      const daily = calculateDailyMetrics(challans, payments, pettyCash);
-      const monthly = calculateMonthlyMetrics(challans, payments, pettyCash);
-      const allTime = calculateAllTimeMetrics(challans, payments, pettyCash);
+    queryFn: async () => {
+      const daily = calculateDailyMetrics(challans, payments, pettyCashRecords);
+      const monthly = calculateMonthlyMetrics(challans, payments, pettyCashRecords);
+      const allTime = calculateAllTimeMetrics(challans, payments, pettyCashRecords);
       const future = calculateFutureMetrics(challans);
 
       return {
@@ -642,11 +603,10 @@ export function useDashboardMetrics() {
         future,
       };
     },
-    enabled: challans.length > 0 || payments.length > 0,
+    enabled: true,
   });
 }
 
-// Client Balances
 export function useClientBalances() {
   const { data: challans = [] } = useChallans();
   const { data: payments = [] } = usePayments();
@@ -654,46 +614,40 @@ export function useClientBalances() {
 
   return useQuery({
     queryKey: ['clientBalances'],
-    queryFn: () => {
+    queryFn: async () => {
       const balanceMap = new Map<string, { totalRent: number; totalPayments: number; balance: number }>();
 
-      // Calculate total rent from challans
-      for (const challan of challans) {
-        const total = calculateChallanTotal(challan);
-        const existing = balanceMap.get(challan.clientName) || { totalRent: 0, totalPayments: 0, balance: 0 };
-        existing.totalRent += total;
-        balanceMap.set(challan.clientName, existing);
-      }
+      clients.forEach((client) => {
+        balanceMap.set(client.name, { totalRent: 0, totalPayments: 0, balance: 0 });
+      });
 
-      // Calculate total payments
-      for (const payment of payments) {
+      challans.forEach((challan) => {
+        const existing = balanceMap.get(challan.clientName) || { totalRent: 0, totalPayments: 0, balance: 0 };
+        const challanTotal = calculateChallanTotal(challan);
+        existing.totalRent += challanTotal;
+        balanceMap.set(challan.clientName, existing);
+      });
+
+      payments.forEach((payment) => {
         const existing = balanceMap.get(payment.client) || { totalRent: 0, totalPayments: 0, balance: 0 };
         existing.totalPayments += payment.amount;
         balanceMap.set(payment.client, existing);
-      }
+      });
 
-      // Calculate balances
-      for (const [client, data] of balanceMap.entries()) {
-        data.balance = data.totalRent - data.totalPayments;
-      }
-
-      // Include all clients, even those with no transactions
-      for (const client of clients) {
-        if (!balanceMap.has(client.name)) {
-          balanceMap.set(client.name, { totalRent: 0, totalPayments: 0, balance: 0 });
-        }
-      }
+      balanceMap.forEach((value, key) => {
+        value.balance = value.totalRent - value.totalPayments;
+        balanceMap.set(key, value);
+      });
 
       return Array.from(balanceMap.entries()).map(([name, data]) => ({
         clientName: name,
         ...data,
       }));
     },
-    enabled: challans.length > 0 || payments.length > 0 || clients.length > 0,
+    enabled: true,
   });
 }
 
-// Build Metadata
 export function useBuildMetadata() {
   const { actor, isFetching } = useActor();
 

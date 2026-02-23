@@ -2,25 +2,26 @@ import Map "mo:core/Map";
 import Text "mo:core/Text";
 import Array "mo:core/Array";
 import Iter "mo:core/Iter";
-import Principal "mo:core/Principal";
-import Runtime "mo:core/Runtime";
 import Float "mo:core/Float";
 import Time "mo:core/Time";
 import List "mo:core/List";
+import Runtime "mo:core/Runtime";
+import Principal "mo:core/Principal";
+import Storage "blob-storage/Storage";
+import MixinStorage "blob-storage/Mixin";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import MixinStorage "blob-storage/Mixin";
-import Storage "blob-storage/Storage";
 import UserApproval "user-approval/approval";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
-  let approvalState = UserApproval.initState(accessControlState);
   include MixinAuthorization(accessControlState);
 
-  include MixinStorage();
+  // Approval system
+  let userApproval = UserApproval.initState(accessControlState);
 
-  let userProfiles = Map.empty<Principal, UserProfile>();
   let inventory = Map.empty<Text, InventoryItem>();
   let challans = Map.empty<Text, Challan>();
   let payments = Map.empty<Text, Payment>();
@@ -28,12 +29,32 @@ actor {
   let pettyCashAttachments = Map.empty<Int, [PettyCashAttachment]>();
   let clients = Map.empty<Text, Client>();
 
+  include MixinStorage();
+
   let buildTime = Time.now();
   let gitCommitHash : Text = "4e9dc5a4f88b290f0c42c7eae50598689f80d542";
-  var bootstrapAdmins = List.empty<Principal>();
 
-  public type UserProfile = {
-    name : Text;
+  // Approval methods
+  public query ({ caller }) func isCallerApproved() : async Bool {
+    AccessControl.hasPermission(accessControlState, caller, #admin) or UserApproval.isApproved(userApproval, caller);
+  };
+
+  public shared ({ caller }) func requestApproval() : async () {
+    UserApproval.requestApproval(userApproval, caller);
+  };
+
+  public shared ({ caller }) func setApproval(user : Principal, status : UserApproval.ApprovalStatus) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
+    UserApproval.setApproval(userApproval, user, status);
+  };
+
+  public query ({ caller }) func listApprovals() : async [UserApproval.UserApprovalInfo] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
+    UserApproval.listApprovals(userApproval);
   };
 
   public type InventoryItem = {
@@ -148,112 +169,13 @@ actor {
   public type BuildMetadata = {
     buildTime : Int;
     gitCommitHash : Text;
-    canisterId : Principal;
-  };
-
-  public type BecomeAdminResponse = {
-    success : Bool;
-    isAlreadyAdmin : Bool;
-    error : ?Text;
-  };
-
-  func ensureApprovedUser(caller : Principal) {
-    if (not isAdmin(caller) and not UserApproval.isApproved(approvalState, caller)) {
-      Runtime.trap("Access denied. Your account is not approved. Please request access with `backend.requestAccess`. Contact an admin if you need help!");
-    };
-  };
-
-  func ensureAdmin(caller : Principal) {
-    if (not isAdmin(caller)) {
-      Runtime.trap("Only admins can perform this action!");
-    };
-  };
-
-  func isAdmin(caller : Principal) : Bool {
-    isAdminOrBootstrapAdmin(caller);
-  };
-
-  public query ({ caller }) func isBootstrapAdmin() : async Bool {
-    isBootstrapAdminInternal(caller);
-  };
-
-  public query ({ caller }) func isAdminOrBootstrapAdminExternal() : async Bool {
-    isAdminOrBootstrapAdmin(caller);
-  };
-
-  func isBootstrapAdminInternal(caller : Principal) : Bool {
-    bootstrapAdmins.values().any(func(p) { p == caller });
-  };
-
-  func isAdminOrBootstrapAdmin(caller : Principal) : Bool {
-    isBootstrapAdminInternal(caller) or AccessControl.getUserRole(accessControlState, caller) == #admin;
-  };
-
-  public shared ({ caller }) func becomeBootstrapAdmin(isAdminDomain : Bool) : async BecomeAdminResponse {
-    if (isBootstrapAdminInternal(caller)) {
-      return {
-        success = true;
-        isAlreadyAdmin = true;
-        error = ?"You are already a bootstrap admin!";
-      };
-    };
-
-    if (not isAdminDomain) {
-      return {
-        success = false;
-        isAlreadyAdmin = false;
-        error = ?"VISIBLE BUG: You must call this from the admin domain only";
-      };
-    };
-
-    switch (bootstrapAdmins.values().next()) {
-      case (null) {
-        // No bootstrap admins yet, add caller as the first one
-        bootstrapAdmins.add(caller);
-        {
-          success = true;
-          isAlreadyAdmin = false;
-          error = null;
-        };
-      };
-      case (?existingAdmin) {
-        if (existingAdmin == caller) {
-          {
-            success = true;
-            isAlreadyAdmin = true;
-            error = null;
-          };
-        } else {
-          {
-            success = false;
-            isAlreadyAdmin = false;
-            error = ?"Only a single bootstrap admin is supported currently.";
-          };
-        };
-      };
-    };
-  };
-
-  func calculateIssuedQuantity(_itemName : Text) : Float {
-    0.0;
-  };
-
-  func checkDuplicateChallanItems(items : [ChallanItem]) {
-    let seenItems = Map.empty<Text, ()>();
-    for (item in items.values()) {
-      switch (seenItems.get(item.itemName)) {
-        case (null) {
-          seenItems.add(item.itemName, ());
-        };
-        case (?_) {
-          Runtime.trap("Duplicate item found: " # item.itemName);
-        };
-      };
-    };
+    canisterId : Text;
   };
 
   public shared ({ caller }) func addClient(name : Text, createdAt : Int) : async () {
-    ensureApprovedUser(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add clients");
+    };
     switch (clients.get(name)) {
       case (?_) { Runtime.trap("Client already exists") };
       case (null) {
@@ -266,47 +188,14 @@ actor {
     };
   };
 
-  public shared ({ caller }) func deleteClient(name : Text) : async () {
-    ensureAdmin(caller);
-    clients.remove(name);
-  };
-
-  public query ({ caller }) func getAllClients() : async [Client] {
-    ensureApprovedUser(caller);
-    clients.values().toArray();
-  };
-
-  public shared ({ caller }) func bulkCreateClients(batch : [Client]) : async [ClientBulkCreateResult] {
-    ensureAdmin(caller);
-
-    let results = batch.map(
-      func(request) {
-        switch (clients.get(request.name)) {
-          case (null) {
-            clients.add(request.name, request);
-            {
-              name = request.name;
-              success = true;
-              error = null;
-              created = ?request;
-            };
-          };
-          case (?_) {
-            {
-              name = request.name;
-              success = false;
-              error = ?"Client already exists";
-              created = null;
-            };
-          };
-        };
-      }
-    );
-    results;
+  func calculateIssuedQuantity(_itemName : Text) : Float {
+    0.0;
   };
 
   public shared ({ caller }) func addInventoryItem(name : Text, totalQuantity : Float, dailyRate : Float) : async () {
-    ensureApprovedUser(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can add inventory items");
+    };
     if (totalQuantity <= 0) {
       Runtime.trap("Total quantity must be greater than 0");
     };
@@ -329,7 +218,9 @@ actor {
   };
 
   public shared ({ caller }) func updateInventoryItem(name : Text, totalQuantity : Float, dailyRate : Float) : async () {
-    ensureApprovedUser(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can update inventory items");
+    };
     if (totalQuantity <= 0) {
       Runtime.trap("Total quantity must be greater than 0");
     };
@@ -350,50 +241,47 @@ actor {
   };
 
   public shared ({ caller }) func deleteInventoryItem(name : Text) : async () {
-    ensureAdmin(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete inventory items");
+    };
     inventory.remove(name);
   };
 
   public query ({ caller }) func getInventory() : async [InventoryItem] {
-    ensureApprovedUser(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view inventory");
+    };
     inventory.values().toArray();
   };
 
-  public shared ({ caller }) func createBulkChallans(batch : [Challan]) : async [BulkChallanCreateResult] {
-    ensureAdmin(caller);
-    batch.map<Challan, BulkChallanCreateResult>(
-      func(request) {
-        switch (clients.get(request.clientName)) {
-          case (null) {
-            let newClient : Client = {
-              name = request.clientName;
-              createdAt = request.rentDate;
-            };
-            clients.add(request.clientName, newClient);
-          };
-          case (?_) {};
+  func checkDuplicateChallanItems(items : [ChallanItem]) {
+    let seenItems = Map.empty<Text, ()>();
+    for (item in items.values()) {
+      switch (seenItems.get(item.itemName)) {
+        case (null) {
+          seenItems.add(item.itemName, ());
         };
-
-        let updatedChallan : Challan = {
-          request with
-          returned = false;
-          rentDate = request.rentDate;
-          creationDate = request.creationDate;
+        case (?_) {
+          Runtime.trap("Duplicate item found: " # item.itemName);
         };
-        challans.add(request.id, updatedChallan);
-
-        {
-          id = request.id;
-          success = true;
-          error = null;
-          created = ?updatedChallan;
-        };
-      }
-    );
+      };
+    };
   };
 
-  public shared ({ caller }) func createChallan(id : Text, clientName : Text, venue : Text, items : [ChallanItem], freight : Float, numberOfDays : Float, rentDate : Int, site : Text, creationDate : Int) : async () {
-    ensureApprovedUser(caller);
+  public shared ({ caller }) func createChallan(
+    id : Text,
+    clientName : Text,
+    venue : Text,
+    items : [ChallanItem],
+    freight : Float,
+    numberOfDays : Float,
+    rentDate : Int,
+    site : Text,
+    creationDate : Int,
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create challans");
+    };
     checkDuplicateChallanItems(items);
 
     switch (clients.get(clientName)) {
@@ -422,53 +310,56 @@ actor {
     challans.add(id, newChallan);
   };
 
-  public shared ({ caller }) func updateChallan(id : Text, clientName : Text, venue : Text, items : [ChallanItem], freight : Float, numberOfDays : Float, rentDate : Int, site : Text) : async () {
-    ensureApprovedUser(caller);
+  public shared ({ caller }) func updateChallan(
+    id : Text,
+    clientName : Text,
+    venue : Text,
+    items : [ChallanItem],
+    freight : Float,
+    numberOfDays : Float,
+    rentDate : Int,
+    site : Text,
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update challans");
+    };
     checkDuplicateChallanItems(items);
 
-    switch (challans.get(id)) {
-      case (?oldChallan) {
-        if (oldChallan.returned) {
-          Runtime.trap("Cannot update a returned challan");
-        };
-
-        let updatedChallan : Challan = {
-          id;
-          clientName;
-          venue;
-          items;
-          freight;
-          numberOfDays;
-          returned = false;
-          rentDate;
-          site;
-          creationDate = oldChallan.creationDate;
-        };
-        challans.add(id, updatedChallan);
-      };
-      case (null) {
-        Runtime.trap("Challan not found");
-      };
+    let oldChallan = switch (challans.get(id)) {
+      case (?challan) { challan };
+      case (null) { Runtime.trap("Challan not found") };
     };
+
+    if (oldChallan.returned) {
+      Runtime.trap("Cannot update a returned challan");
+    };
+
+    let updatedChallan : Challan = {
+      id;
+      clientName;
+      venue;
+      items;
+      freight;
+      numberOfDays;
+      returned = false;
+      rentDate;
+      site;
+      creationDate = oldChallan.creationDate;
+    };
+    challans.add(id, updatedChallan);
   };
 
   public shared ({ caller }) func deleteChallan(id : Text) : async () {
-    ensureAdmin(caller);
-    switch (challans.get(id)) {
-      case (?challan) {
-        if (challan.returned) {
-          Runtime.trap("Cannot delete a challan that is marked as returned");
-        };
-        challans.remove(id);
-      };
-      case (null) {
-        Runtime.trap("Challan not found");
-      };
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete challans");
     };
+    challans.remove(id);
   };
 
   public shared ({ caller }) func markChallanReturned(id : Text) : async () {
-    ensureApprovedUser(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can mark challans as returned");
+    };
     switch (challans.get(id)) {
       case (?challan) {
         if (challan.returned) {
@@ -483,8 +374,175 @@ actor {
     };
   };
 
+  public shared ({ caller }) func addPayment(
+    id : Text,
+    date : Int,
+    client : Text,
+    mode : Text,
+    amount : Float,
+    referenceNumber : Text,
+    createdAt : Int,
+    site : Text,
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add payments");
+    };
+    let payment : Payment = {
+      id;
+      date;
+      client;
+      mode;
+      amount;
+      referenceNumber;
+      createdAt;
+      site;
+    };
+    payments.add(id, payment);
+  };
+
+  public shared ({ caller }) func addPettyCash(
+    date : Int,
+    openingBalance : Float,
+    cashFromMd : Float,
+    expenses : Float,
+    staffAdvance : Float,
+    handoverToMd : Float,
+    netChange : Float,
+    closingBalance : Float,
+    transferFromCashEquivalents : Float,
+    categoryExpenses : [PettyCashCategory],
+    remarks : Text,
+    createdAt : Int,
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add petty cash records");
+    };
+    let record : PettyCash = {
+      date;
+      openingBalance;
+      cashFromMd;
+      expenses;
+      staffAdvance;
+      handoverToMd;
+      netChange;
+      closingBalance;
+      transferFromCashEquivalents;
+      categoryExpenses;
+      remarks;
+      createdAt;
+    };
+    pettyCashRecords.add(date, record);
+  };
+
+  public query ({ caller }) func getAllChallans() : async [Challan] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view challans");
+    };
+    challans.values().toArray();
+  };
+
+  public query ({ caller }) func getAllPayments() : async [Payment] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view payments");
+    };
+    payments.values().toArray();
+  };
+
+  public query ({ caller }) func getAllPettyCashRecords() : async [PettyCash] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view petty cash records");
+    };
+    pettyCashRecords.values().toArray();
+  };
+
+  public query ({ caller }) func getAllClients() : async [Client] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view clients");
+    };
+    clients.values().toArray();
+  };
+
+  public query ({ caller }) func getChallansByClient(client : Text) : async [Challan] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view challans");
+    };
+    challans.values().toArray().filter(func(challan) { challan.clientName == client });
+  };
+
+  public query ({ caller }) func getPaymentsByClient(client : Text) : async [Payment] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view payments");
+    };
+    payments.values().toArray().filter(func(payment) { payment.client == client });
+  };
+
+  public query ({ caller }) func getPaymentsByDateRange(startDate : Int, endDate : Int) : async [Payment] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view payments");
+    };
+    payments.values().toArray().filter(func(payment) { payment.date >= startDate and payment.date <= endDate });
+  };
+
+  public query ({ caller }) func getChallansByDateRange(startDate : Int, endDate : Int) : async [Challan] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view challans");
+    };
+    challans.values().toArray().filter(func(challan) { challan.rentDate >= startDate and challan.rentDate <= endDate });
+  };
+
+  public query ({ caller }) func getPettyCashByDateRange(startDate : Int, endDate : Int) : async [PettyCash] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view petty cash records");
+    };
+    pettyCashRecords.values().toArray().filter(func(record) { record.date >= startDate and record.date <= endDate });
+  };
+
+  public query ({ caller }) func getBuildMetadata() : async BuildMetadata {
+    {
+      buildTime;
+      gitCommitHash;
+      canisterId = "Deprecate this endpoint as soon as possible, this needs a fix!";
+    };
+  };
+
+  public query ({ caller }) func healthCheck() : async Int {
+    buildTime;
+  };
+
+  public shared ({ caller }) func bulkCreateClients(batch : [Client]) : async [ClientBulkCreateResult] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create clients");
+    };
+    let results = batch.map(
+      func(request) {
+        switch (clients.get(request.name)) {
+          case (null) {
+            clients.add(request.name, request);
+            {
+              name = request.name;
+              success = true;
+              error = null;
+              created = ?request;
+            };
+          };
+          case (?_) {
+            {
+              name = request.name;
+              success = false;
+              error = ?"Client already exists";
+              created = null;
+            };
+          };
+        };
+      }
+    );
+    results;
+  };
+
   public query ({ caller }) func getAttachmentsForPettyCashRecord(date : Int) : async [PettyCashAttachment] {
-    ensureApprovedUser(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view attachments");
+    };
     switch (pettyCashAttachments.get(date)) {
       case (?attachments) { attachments };
       case (null) { [] };
@@ -492,7 +550,9 @@ actor {
   };
 
   public shared ({ caller }) func addAttachmentToPettyCashRecord(date : Int, attachment : PettyCashAttachment) : async [PettyCashAttachment] {
-    ensureApprovedUser(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add attachments");
+    };
     switch (pettyCashAttachments.get(date)) {
       case (?existing) {
         let newAttachments = existing.concat([attachment]);
@@ -508,7 +568,9 @@ actor {
   };
 
   public shared ({ caller }) func removeAttachmentFromPettyCashRecord(date : Int, attachmentId : Text) : async [PettyCashAttachment] {
-    ensureApprovedUser(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can remove attachments");
+    };
     switch (pettyCashAttachments.get(date)) {
       case (?existing) {
         let filteredAttachments = existing.filter(func(att) { att.id != attachmentId });
@@ -520,204 +582,23 @@ actor {
   };
 
   public shared ({ caller }) func clearPettyCashAttachments(date : Int) : async () {
-    ensureApprovedUser(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can clear attachments");
+    };
     pettyCashAttachments.remove(date);
   };
 
   public shared ({ caller }) func revertChallanToActive(_id : Text) : async () {
-    ensureApprovedUser(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can revert challans");
+    };
     Runtime.trap("Cannot revert a returned challan to active. If this is required, contact the admin for further assistance.");
   };
 
-  public shared ({ caller }) func bulkAddPayments(batch : [Payment]) : async [PaymentBulkCreateResult] {
-    ensureAdmin(caller);
-    batch.map(
-      func(payment) {
-        payments.add(payment.id, payment);
-        {
-          id = payment.id;
-          success = true;
-          error = null;
-          created = ?payment;
-        };
-      }
-    );
-  };
-
-  public shared ({ caller }) func addPayment(id : Text, date : Int, client : Text, mode : Text, amount : Float, referenceNumber : Text, createdAt : Int, site : Text) : async () {
-    ensureApprovedUser(caller);
-    let payment : Payment = {
-      id;
-      date;
-      client;
-      mode;
-      amount;
-      referenceNumber;
-      createdAt;
-      site;
-    };
-    payments.add(id, payment);
-  };
-
-  public shared ({ caller }) func bulkAddPettyCash(batch : [PettyCash]) : async [PettyCashBulkCreateResult] {
-    ensureAdmin(caller);
-    batch.map(
-      func(record) {
-        switch (pettyCashRecords.get(record.date)) {
-          case (null) {
-            pettyCashRecords.add(record.date, record);
-            {
-              date = record.date;
-              success = true;
-              error = null;
-              created = ?record;
-            };
-          };
-          case (?_) {
-            {
-              date = record.date;
-              success = false;
-              error = ?"Petty cash record already exists for this date";
-              created = null;
-            };
-          };
-        };
-      }
-    );
-  };
-
-  public shared ({ caller }) func addPettyCash(date : Int, openingBalance : Float, cashFromMd : Float, expenses : Float, staffAdvance : Float, handoverToMd : Float, netChange : Float, closingBalance : Float, transferFromCashEquivalents : Float, categoryExpenses : [PettyCashCategory], remarks : Text, createdAt : Int) : async () {
-    ensureApprovedUser(caller);
-    switch (pettyCashRecords.get(date)) {
-      case (?_) { Runtime.trap("A petty cash record already exists for this date") };
-      case (null) {
-        let record : PettyCash = {
-          date;
-          openingBalance;
-          cashFromMd;
-          expenses;
-          staffAdvance;
-          handoverToMd;
-          netChange;
-          closingBalance;
-          transferFromCashEquivalents;
-          categoryExpenses;
-          remarks;
-          createdAt;
-        };
-        pettyCashRecords.add(date, record);
-      };
-    };
-  };
-
-  public shared ({ caller }) func updatePettyCash(originalDate : Int, openingBalance : Float, cashFromMd : Float, expenses : Float, staffAdvance : Float, handoverToMd : Float, netChange : Float, closingBalance : Float, transferFromCashEquivalents : Float, categoryExpenses : [PettyCashCategory], remarks : Text) : async () {
-    ensureApprovedUser(caller);
-    switch (pettyCashRecords.get(originalDate)) {
-      case (?existing) {
-        let updatedRecord : PettyCash = {
-          date = originalDate;
-          openingBalance;
-          cashFromMd;
-          expenses;
-          staffAdvance;
-          handoverToMd;
-          netChange;
-          closingBalance;
-          transferFromCashEquivalents;
-          categoryExpenses;
-          remarks;
-          createdAt = existing.createdAt;
-        };
-        pettyCashRecords.add(originalDate, updatedRecord);
-      };
-      case (null) {
-        Runtime.trap("Petty cash record not found for the specified date");
-      };
-    };
-  };
-
-  public shared ({ caller }) func deletePettyCash(date : Int) : async () {
-    ensureAdmin(caller);
-    pettyCashRecords.remove(date);
-  };
-
-  public query ({ caller }) func getAllChallans() : async [Challan] {
-    ensureApprovedUser(caller);
-    challans.values().toArray();
-  };
-
-  public query ({ caller }) func getAllPayments() : async [Payment] {
-    ensureApprovedUser(caller);
-    payments.values().toArray();
-  };
-
-  public query ({ caller }) func getAllPettyCashRecords() : async [PettyCash] {
-    ensureApprovedUser(caller);
-    pettyCashRecords.values().toArray();
-  };
-
-  public query ({ caller }) func getAllPettyCashRecordsWithAttachments() : async [PettyCashWithAttachments] {
-    ensureApprovedUser(caller);
-    let pettyCashIter = pettyCashRecords.entries();
-    pettyCashIter.toArray().map(
-      func((date, record)) {
-        let attachments = switch (pettyCashAttachments.get(date)) {
-          case (?atts) { atts };
-          case (null) { [] };
-        };
-        {
-          pettyCash = record;
-          attachments;
-        };
-      }
-    );
-  };
-
-  public query ({ caller }) func getChallansByClient(client : Text) : async [Challan] {
-    ensureApprovedUser(caller);
-    challans.values().toArray().filter(func(challan) { challan.clientName == client });
-  };
-
-  public query ({ caller }) func getPaymentsByClient(client : Text) : async [Payment] {
-    ensureApprovedUser(caller);
-    payments.values().toArray().filter(func(payment) { payment.client == client });
-  };
-
-  public query ({ caller }) func getPaymentsByDateRange(startDate : Int, endDate : Int) : async [Payment] {
-    ensureApprovedUser(caller);
-    payments.values().toArray().filter(func(payment) { payment.date >= startDate and payment.date <= endDate });
-  };
-
-  public query ({ caller }) func getChallansByDateRange(startDate : Int, endDate : Int) : async [Challan] {
-    ensureApprovedUser(caller);
-    challans.values().toArray().filter(func(challan) { challan.rentDate >= startDate and challan.rentDate <= endDate });
-  };
-
-  public query ({ caller }) func getPettyCashByDateRange(startDate : Int, endDate : Int) : async [PettyCash] {
-    ensureApprovedUser(caller);
-    pettyCashRecords.values().toArray().filter(func(record) { record.date >= startDate and record.date <= endDate });
-  };
-
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    ensureApprovedUser(caller);
-    userProfiles.get(caller);
-  };
-
-  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    ensureApprovedUser(caller);
-    userProfiles.add(caller, profile);
-  };
-
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    ensureApprovedUser(caller);
-    if (caller != user and not isAdmin(caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
-    userProfiles.get(user);
-  };
-
   public shared ({ caller }) func bulkCreateInventoryItems(batch : [InventoryItem]) : async [InventoryBulkCreateResult] {
-    ensureAdmin(caller);
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can bulk create inventory items");
+    };
     batch.map(
       func(item) {
         if (item.totalQuantity <= 0) {
@@ -764,50 +645,157 @@ actor {
     );
   };
 
-  /// Update rent date of all existing challans by re-uploading original csv file.
-  /// This is an admin-only operation to restore corrupted rent dates.
-  public shared ({ caller }) func updateChallanRentDates(challanData : [Challan]) : async () {
-    ensureAdmin(caller);
-    for (challan in challanData.values()) {
-      switch (challans.get(challan.id)) {
-        case (?_) {
-          challans.add(challan.id, challan);
+  public shared ({ caller }) func bulkCreateChallans(batch : [Challan]) : async [BulkChallanCreateResult] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can bulk create challans");
+    };
+    batch.map<Challan, BulkChallanCreateResult>(
+      func(request) {
+        switch (clients.get(request.clientName)) {
+          case (null) {
+            let newClient : Client = {
+              name = request.clientName;
+              createdAt = request.rentDate;
+            };
+            clients.add(request.clientName, newClient);
+          };
+          case (?_) {};
         };
-        case (null) {};
+
+        let updatedChallan : Challan = {
+          request with
+          returned = false;
+          rentDate = request.rentDate;
+          creationDate = request.creationDate;
+        };
+        challans.add(request.id, updatedChallan);
+
+        {
+          id = request.id;
+          success = true;
+          error = null;
+          created = ?updatedChallan;
+        };
+      }
+    );
+  };
+
+  public shared ({ caller }) func bulkAddPayments(batch : [Payment]) : async [PaymentBulkCreateResult] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can bulk add payments");
+    };
+    batch.map(
+      func(payment) {
+        payments.add(payment.id, payment);
+        {
+          id = payment.id;
+          success = true;
+          error = null;
+          created = ?payment;
+        };
+      }
+    );
+  };
+
+  public shared ({ caller }) func bulkAddPettyCash(batch : [PettyCash]) : async [PettyCashBulkCreateResult] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can bulk add petty cash records");
+    };
+    batch.map(
+      func(record) {
+        switch (pettyCashRecords.get(record.date)) {
+          case (null) {
+            pettyCashRecords.add(record.date, record);
+            {
+              date = record.date;
+              success = true;
+              error = null;
+              created = ?record;
+            };
+          };
+          case (?_) {
+            {
+              date = record.date;
+              success = false;
+              error = ?"Petty cash record already exists for this date";
+              created = null;
+            };
+          };
+        };
+      }
+    );
+  };
+
+  public shared ({ caller }) func updatePettyCash(
+    originalDate : Int,
+    openingBalance : Float,
+    cashFromMd : Float,
+    expenses : Float,
+    staffAdvance : Float,
+    handoverToMd : Float,
+    netChange : Float,
+    closingBalance : Float,
+    transferFromCashEquivalents : Float,
+    categoryExpenses : [PettyCashCategory],
+    remarks : Text,
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update petty cash records");
+    };
+    switch (pettyCashRecords.get(originalDate)) {
+      case (?existing) {
+        let updatedRecord : PettyCash = {
+          date = originalDate;
+          openingBalance;
+          cashFromMd;
+          expenses;
+          staffAdvance;
+          handoverToMd;
+          netChange;
+          closingBalance;
+          transferFromCashEquivalents;
+          categoryExpenses;
+          remarks;
+          createdAt = existing.createdAt;
+        };
+        pettyCashRecords.add(originalDate, updatedRecord);
+      };
+      case (null) {
+        Runtime.trap("Petty cash record not found for the specified date");
       };
     };
   };
 
-  public query ({ caller }) func getBuildMetadata() : async BuildMetadata {
-    {
-      buildTime;
-      gitCommitHash;
-      canisterId = caller;
+  public shared ({ caller }) func deleteClient(name : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete clients");
     };
+    clients.remove(name);
   };
 
-  public query ({ caller }) func healthCheck() : async Int {
-    buildTime;
+  public shared ({ caller }) func deletePettyCash(date : Int) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete petty cash records");
+    };
+    pettyCashRecords.remove(date);
   };
 
-  // UserApproval-specific functions
-
-  public shared ({ caller }) func requestApproval() : async () {
-    UserApproval.requestApproval(approvalState, caller);
-  };
-
-  public query ({ caller }) func isCallerApproved() : async Bool {
-    isAdmin(caller) or UserApproval.isApproved(approvalState, caller);
-  };
-
-  public shared ({ caller }) func setApproval(user : Principal, status : UserApproval.ApprovalStatus) : async () {
-    ensureAdmin(caller);
-    UserApproval.setApproval(approvalState, user, status);
-  };
-
-  public query ({ caller }) func listApprovals() : async [UserApproval.UserApprovalInfo] {
-    ensureAdmin(caller);
-    UserApproval.listApprovals(approvalState);
+  public query ({ caller }) func getAllPettyCashRecordsWithAttachments() : async [PettyCashWithAttachments] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view petty cash records with attachments");
+    };
+    let pettyCashIter = pettyCashRecords.entries();
+    pettyCashIter.toArray().map(
+      func((date, record)) {
+        let attachments = switch (pettyCashAttachments.get(date)) {
+          case (?atts) { atts };
+          case (null) { [] };
+        };
+        {
+          pettyCash = record;
+          attachments;
+        };
+      }
+    );
   };
 };
-

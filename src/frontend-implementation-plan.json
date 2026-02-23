@@ -1,36 +1,215 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Remove connection error UI blocking main app access",
+  "title": "Remove all authentication logic and make application fully public",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Remove BackendConnectionGate wrapper from App.tsx to prevent connection diagnostics from blocking dashboard and application modules",
+      "summary": "Remove all Internet Identity authentication logic from the frontend including SignInScreen, SignInRequiredDialog, and all authentication-related components",
       "acceptanceCriteria": [
-        "Users can immediately access the dashboard without seeing connection error messages",
-        "No connection diagnostics UI, retry buttons, or error messages are displayed",
-        "The main app (dashboard and other modules/modals) renders directly without being blocked"
+        "SignInScreen component is removed or disabled",
+        "SignInRequiredDialog component is removed or disabled",
+        "No authentication prompts appear when accessing the application",
+        "Application loads directly to the dashboard without login"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/App.tsx",
+          "path": "frontend/src/components/common/SignInScreen.tsx",
           "operation": "modify",
-          "description": "Remove the BackendConnectionGate import statement and unwrap the router children from the BackendConnectionGate component, leaving AuthApprovalGate and AppErrorBoundary wrappers intact. Ensure the RouterProvider and all routes remain functional without the connection gate layer."
+          "description": "Disable SignInScreen by making it render null or an empty fragment so it never displays, preventing any login prompts from appearing"
+        },
+        {
+          "path": "frontend/src/components/common/SignInRequiredDialog.tsx",
+          "operation": "modify",
+          "description": "Disable SignInRequiredDialog by making it render null or return early without displaying any authentication prompts"
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Delete the BackendConnectionGate component file since it is no longer used",
+      "summary": "Remove AuthApprovalGate component or modify it to always render children without checking authentication or approval status",
       "acceptanceCriteria": [
-        "The BackendConnectionGate.tsx file is deleted from the codebase",
-        "No unused imports or references to BackendConnectionGate remain"
+        "AuthApprovalGate no longer blocks access based on authentication",
+        "Application renders main content immediately without authentication checks",
+        "No approval screens or gates are shown to users"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/common/BackendConnectionGate.tsx",
-          "operation": "delete",
-          "description": "Delete the BackendConnectionGate.tsx component file as it is no longer referenced or used in the application."
+          "path": "frontend/src/components/common/AuthApprovalGate.tsx",
+          "operation": "modify",
+          "description": "Modify AuthApprovalGate to unconditionally render its children prop without performing any authentication, approval, or actor readiness checks, effectively bypassing all access control"
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Remove or comment out the AuthApprovalGate wrapper from the router tree so the application renders directly without any authentication gating"
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Replace all authentication state checks with default authenticated state throughout the application",
+      "acceptanceCriteria": [
+        "useInternetIdentity hook is no longer used in components",
+        "All isAuthenticated checks are removed or hardcoded to true",
+        "No authentication-related context providers wrap the application"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/main.tsx",
+          "operation": "modify",
+          "description": "Remove InternetIdentityProvider wrapper from the React root so no authentication context is provided to the application"
+        },
+        {
+          "path": "frontend/src/components/layout/AppLayout.tsx",
+          "operation": "modify",
+          "description": "Remove any useInternetIdentity hook calls and authentication state checks; simplify login/logout UI elements or remove them entirely"
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Remove admin role checks, staff restrictions, and approval status checks from all components and hooks including useStaffRestrictions, useAppMode, and useApprovalStatus",
+      "acceptanceCriteria": [
+        "All users can access bulk upload functionality",
+        "All users can perform delete operations",
+        "Admin-only routes and features are accessible to everyone",
+        "Access Management page is removed or accessible to all"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useStaffRestrictions.ts",
+          "operation": "modify",
+          "description": "Modify useStaffRestrictions to always return { canDelete: true, canBulkUpload: true } without checking admin status or app mode, enabling all users to perform restricted operations"
+        },
+        {
+          "path": "frontend/src/hooks/useApprovalStatus.ts",
+          "operation": "modify",
+          "description": "Modify useApprovalStatus to always return isApproved: true and isAdmin: true without querying the backend, removing all approval and admin checks"
+        },
+        {
+          "path": "frontend/src/components/challans/ChallanBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Remove useStaffRestrictions check and related error messages so all users can access bulk challan upload functionality"
+        },
+        {
+          "path": "frontend/src/components/inventory/InventoryBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Remove useStaffRestrictions check and related error messages so all users can access bulk inventory upload functionality"
+        },
+        {
+          "path": "frontend/src/components/payments/PaymentBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Remove useStaffRestrictions check and related error messages so all users can access bulk payment upload functionality"
+        },
+        {
+          "path": "frontend/src/components/petty-cash/PettyCashBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Remove useStaffRestrictions check and related error messages so all users can access bulk petty cash upload functionality"
+        },
+        {
+          "path": "frontend/src/components/clients/ClientBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Remove useStaffRestrictions check and related error messages so all users can access bulk client upload functionality"
+        },
+        {
+          "path": "frontend/src/components/challans/ChallanNewFormatBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Remove useStaffRestrictions check and related error messages so all users can access new format challan bulk upload functionality"
+        },
+        {
+          "path": "frontend/src/components/challans/ChallanRestoreDatesDialog.tsx",
+          "operation": "modify",
+          "description": "Remove useStaffRestrictions check and related error messages so all users can access challan date restoration functionality"
+        },
+        {
+          "path": "frontend/src/pages/ChallansPage.tsx",
+          "operation": "modify",
+          "description": "Remove useStaffRestrictions check that controls delete operation visibility; enable delete functionality for all users"
+        },
+        {
+          "path": "frontend/src/pages/InventoryPage.tsx",
+          "operation": "modify",
+          "description": "Remove useMutationGate and SignInRequiredDialog dependencies; remove useStaffRestrictions check that controls delete operations; enable all inventory operations for all users"
+        },
+        {
+          "path": "frontend/src/pages/AccessManagementPage.tsx",
+          "operation": "modify",
+          "description": "Remove admin-only access checks and make the page accessible to all users, or remove the page entirely if no longer needed without authentication"
+        },
+        {
+          "path": "frontend/src/components/layout/AppLayout.tsx",
+          "operation": "modify",
+          "description": "Remove admin mode badges, conditional Access Management link visibility, and any admin/staff role indicators from the layout"
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Remove useMutationGate hook or modify it to always return mutations as ready without checking authentication state",
+      "acceptanceCriteria": [
+        "All mutations are immediately available without authentication checks",
+        "useMutationGate no longer blocks mutations based on auth state",
+        "Components can perform mutations without authentication"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useMutationGate.ts",
+          "operation": "modify",
+          "description": "Modify useMutationGate to always return { mutationsReady: true, blockingReason: null } without checking actor state or authentication, allowing all mutations to proceed immediately"
+        }
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "summary": "Modify useActor hook to create backend actor instances without requiring Internet Identity authentication or admin token parameters",
+      "acceptanceCriteria": [
+        "useActor hook creates actor without identity parameter",
+        "Admin token URL parameter is no longer used",
+        "Backend actor connects using anonymous identity or no authentication"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useActorWithConnection.ts",
+          "operation": "modify",
+          "description": "Modify useActorWithConnection to create backend actor with anonymous identity without requiring Internet Identity authentication; remove identity and admin token parameter dependencies"
+        }
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "summary": "Remove ApprovalRequiredScreen component and all approval request functionality from the frontend",
+      "acceptanceCriteria": [
+        "ApprovalRequiredScreen is removed or never rendered",
+        "No approval request functionality exists",
+        "Users never see approval pending messages"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/common/ApprovalRequiredScreen.tsx",
+          "operation": "modify",
+          "description": "Disable ApprovalRequiredScreen by making it render null or an empty fragment so it never displays approval request UI"
+        }
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "summary": "Remove useBootstrapAdmin hook and all admin bootstrapping logic from the frontend",
+      "acceptanceCriteria": [
+        "useBootstrapAdmin hook is removed or unused",
+        "No admin bootstrapping occurs on admin domains",
+        "Admin token handling is removed"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useBootstrapAdmin.ts",
+          "operation": "modify",
+          "description": "Modify useBootstrapAdmin to return a no-op mutation that does nothing; disable all admin bootstrapping logic"
+        },
+        {
+          "path": "frontend/src/components/common/AuthApprovalGate.tsx",
+          "operation": "modify",
+          "description": "Remove useBootstrapAdmin hook call and admin bootstrapping logic from AuthApprovalGate to prevent admin initialization attempts"
         }
       ]
     }

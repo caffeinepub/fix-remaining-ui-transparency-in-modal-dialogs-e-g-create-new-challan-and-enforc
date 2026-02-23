@@ -1,33 +1,105 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "RentIQ Udaipur property rental application with dashboard and modules",
-  "architectural_notes": [],
+  "summary": "RentIQ property management application - removing admin and user authentication to make it fully public",
+  "architectural_notes": [
+    "Application will be fully public with no authentication"
+  ],
   "known_issues": [
-    "Connection error UI is blocking access to the main dashboard and modules"
+    "Backend connection errors occurring (canister unreachable)"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-remove-the-backendconnectiongate-component-wrapper-from-the-app-tsx-router-configuration-to-prevent-connection-diagnostics-ui-from-blocking-access-to-the-dashboard-and-other-application-modules",
-      "title": "Remove the BackendConnectionGate component wrapper from the App.tsx router configuration to prevent connection diagnostics UI from blocking access to the dashboard and other application modules",
+      "id": "feature-remove-all-internet-identity-authentication-logic-from-the-frontend-including-signinscreen-signinrequireddialog-and-all-authentication-related-components",
+      "title": "Remove all Internet Identity authentication logic from the frontend including SignInScreen, SignInRequiredDialog, and all authentication-related components",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-remove-the-backendconnectiongate-tsx-component-file-from-frontend-src-components-common-since-it-is-no-longer-used",
-      "title": "Remove the BackendConnectionGate.tsx component file from frontend/src/components/common/ since it is no longer used",
+      "id": "feature-remove-authapprovalgate-component-or-modify-it-to-always-render-children-without-checking-authentication-or-approval-status",
+      "title": "Remove AuthApprovalGate component or modify it to always render children without checking authentication or approval status",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-remove-useinternetidentity-hook-dependencies-and-replace-all-authentication-state-checks-with-default-authenticated-state-throughout-the-application",
+      "title": "Remove useInternetIdentity hook dependencies and replace all authentication state checks with default authenticated state throughout the application",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-admin-role-checks-staff-restrictions-and-approval-status-checks-from-all-components-and-hooks-including-usestaffrestrictions-useappmode-and-useapprovalstatus",
+      "title": "Remove admin role checks, staff restrictions, and approval status checks from all components and hooks including useStaffRestrictions, useAppMode, and useApprovalStatus",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-usemutationgate-hook-or-modify-it-to-always-return-mutations-as-ready-without-checking-authentication-state",
+      "title": "Remove useMutationGate hook or modify it to always return mutations as ready without checking authentication state",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-modify-useactor-hook-to-create-backend-actor-instances-without-requiring-internet-identity-authentication-or-admin-token-parameters",
+      "title": "Modify useActor hook to create backend actor instances without requiring Internet Identity authentication or admin token parameters",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-approvalrequiredscreen-component-and-all-approval-request-functionality-from-the-frontend",
+      "title": "Remove ApprovalRequiredScreen component and all approval request functionality from the frontend",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-usebootstrapadmin-hook-and-all-admin-bootstrapping-logic-from-the-frontend",
+      "title": "Remove useBootstrapAdmin hook and all admin bootstrapping logic from the frontend",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
     }
   ],
-  "new_feature_requests": [],
-  "gameProjectType": "none",
-  "projectName": "RentIQ Udaipur",
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Remove all admin and user login/authentication logic",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Remove access control, user approval, and authentication mixins from backend/main.mo and disable all authentication checks in backend endpoints",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Remove UserProfile data type and all user management endpoints from backend/main.mo including approval, profile, and admin check methods",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "status": "pending"
+    }
+  ],
+  "projectName": "RentIQ",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

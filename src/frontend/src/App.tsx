@@ -1,7 +1,6 @@
 import { createRouter, RouterProvider, createRoute, createRootRoute, Outlet } from '@tanstack/react-router';
 import AppLayout from './components/layout/AppLayout';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
-import AuthApprovalGate from './components/common/AuthApprovalGate';
 import DashboardPage from './pages/DashboardPage';
 import InventoryPage from './pages/InventoryPage';
 import ChallansPage from './pages/ChallansPage';
@@ -11,20 +10,15 @@ import PaymentsPage from './pages/PaymentsPage';
 import PettyCashPage from './pages/PettyCashPage';
 import ClientBalancesPage from './pages/ClientBalancesPage';
 import ReportsPage from './pages/ReportsPage';
-import AccessManagementPage from './pages/AccessManagementPage';
 import { initializeRuntimeDiagnostics } from './utils/runtimeDiagnostics';
 
-// Initialize runtime diagnostics early
 initializeRuntimeDiagnostics();
 
-// Single root route with AuthApprovalGate wrapping AppLayout
 const rootRoute = createRootRoute({
   component: () => (
-    <AuthApprovalGate>
-      <AppLayout>
-        <Outlet />
-      </AppLayout>
-    </AuthApprovalGate>
+    <AppLayout>
+      <Outlet />
+    </AppLayout>
   ),
 });
 
@@ -82,12 +76,6 @@ const reportsRoute = createRoute({
   component: ReportsPage,
 });
 
-const accessManagementRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/access-management',
-  component: AccessManagementPage,
-});
-
 const routeTree = rootRoute.addChildren([
   indexRoute,
   inventoryRoute,
@@ -98,7 +86,6 @@ const routeTree = rootRoute.addChildren([
   pettyCashRoute,
   clientBalancesRoute,
   reportsRoute,
-  accessManagementRoute,
 ]);
 
 const router = createRouter({ routeTree });

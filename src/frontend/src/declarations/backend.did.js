@@ -33,11 +33,6 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
-export const BecomeAdminResponse = IDL.Record({
-  'isAlreadyAdmin' : IDL.Bool,
-  'error' : IDL.Opt(IDL.Text),
-  'success' : IDL.Bool,
-});
 export const Payment = IDL.Record({
   'id' : IDL.Text,
   'client' : IDL.Text,
@@ -74,26 +69,6 @@ export const PettyCashBulkCreateResult = IDL.Record({
   'error' : IDL.Opt(IDL.Text),
   'success' : IDL.Bool,
 });
-export const Client = IDL.Record({ 'name' : IDL.Text, 'createdAt' : IDL.Int });
-export const ClientBulkCreateResult = IDL.Record({
-  'created' : IDL.Opt(Client),
-  'name' : IDL.Text,
-  'error' : IDL.Opt(IDL.Text),
-  'success' : IDL.Bool,
-});
-export const InventoryItem = IDL.Record({
-  'dailyRate' : IDL.Float64,
-  'availableQuantity' : IDL.Float64,
-  'name' : IDL.Text,
-  'issuedQuantity' : IDL.Float64,
-  'totalQuantity' : IDL.Float64,
-});
-export const InventoryBulkCreateResult = IDL.Record({
-  'created' : IDL.Opt(InventoryItem),
-  'name' : IDL.Text,
-  'error' : IDL.Opt(IDL.Text),
-  'success' : IDL.Bool,
-});
 export const ChallanItem = IDL.Record({
   'rate' : IDL.Float64,
   'rentalDays' : IDL.Float64,
@@ -118,6 +93,26 @@ export const BulkChallanCreateResult = IDL.Record({
   'error' : IDL.Opt(IDL.Text),
   'success' : IDL.Bool,
 });
+export const Client = IDL.Record({ 'name' : IDL.Text, 'createdAt' : IDL.Int });
+export const ClientBulkCreateResult = IDL.Record({
+  'created' : IDL.Opt(Client),
+  'name' : IDL.Text,
+  'error' : IDL.Opt(IDL.Text),
+  'success' : IDL.Bool,
+});
+export const InventoryItem = IDL.Record({
+  'dailyRate' : IDL.Float64,
+  'availableQuantity' : IDL.Float64,
+  'name' : IDL.Text,
+  'issuedQuantity' : IDL.Float64,
+  'totalQuantity' : IDL.Float64,
+});
+export const InventoryBulkCreateResult = IDL.Record({
+  'created' : IDL.Opt(InventoryItem),
+  'name' : IDL.Text,
+  'error' : IDL.Opt(IDL.Text),
+  'success' : IDL.Bool,
+});
 export const PettyCashWithAttachments = IDL.Record({
   'attachments' : IDL.Vec(PettyCashAttachment),
   'pettyCash' : PettyCash,
@@ -125,9 +120,8 @@ export const PettyCashWithAttachments = IDL.Record({
 export const BuildMetadata = IDL.Record({
   'gitCommitHash' : IDL.Text,
   'buildTime' : IDL.Int,
-  'canisterId' : IDL.Principal,
+  'canisterId' : IDL.Text,
 });
-export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const ApprovalStatus = IDL.Variant({
   'pending' : IDL.Null,
   'approved' : IDL.Null,
@@ -206,7 +200,6 @@ export const idlService = IDL.Service({
       [],
     ),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'becomeBootstrapAdmin' : IDL.Func([IDL.Bool], [BecomeAdminResponse], []),
   'bulkAddPayments' : IDL.Func(
       [IDL.Vec(Payment)],
       [IDL.Vec(PaymentBulkCreateResult)],
@@ -215,6 +208,11 @@ export const idlService = IDL.Service({
   'bulkAddPettyCash' : IDL.Func(
       [IDL.Vec(PettyCash)],
       [IDL.Vec(PettyCashBulkCreateResult)],
+      [],
+    ),
+  'bulkCreateChallans' : IDL.Func(
+      [IDL.Vec(Challan)],
+      [IDL.Vec(BulkChallanCreateResult)],
       [],
     ),
   'bulkCreateClients' : IDL.Func(
@@ -228,11 +226,6 @@ export const idlService = IDL.Service({
       [],
     ),
   'clearPettyCashAttachments' : IDL.Func([IDL.Int], [], []),
-  'createBulkChallans' : IDL.Func(
-      [IDL.Vec(Challan)],
-      [IDL.Vec(BulkChallanCreateResult)],
-      [],
-    ),
   'createChallan' : IDL.Func(
       [
         IDL.Text,
@@ -267,7 +260,6 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getBuildMetadata' : IDL.Func([], [BuildMetadata], ['query']),
-  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getChallansByClient' : IDL.Func([IDL.Text], [IDL.Vec(Challan)], ['query']),
   'getChallansByDateRange' : IDL.Func(
@@ -287,14 +279,7 @@ export const idlService = IDL.Service({
       [IDL.Vec(PettyCash)],
       ['query'],
     ),
-  'getUserProfile' : IDL.Func(
-      [IDL.Principal],
-      [IDL.Opt(UserProfile)],
-      ['query'],
-    ),
   'healthCheck' : IDL.Func([], [IDL.Int], ['query']),
-  'isAdminOrBootstrapAdminExternal' : IDL.Func([], [IDL.Bool], ['query']),
-  'isBootstrapAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
   'listApprovals' : IDL.Func([], [IDL.Vec(UserApprovalInfo)], ['query']),
@@ -306,7 +291,6 @@ export const idlService = IDL.Service({
     ),
   'requestApproval' : IDL.Func([], [], []),
   'revertChallanToActive' : IDL.Func([IDL.Text], [], []),
-  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setApproval' : IDL.Func([IDL.Principal, ApprovalStatus], [], []),
   'updateChallan' : IDL.Func(
       [
@@ -322,7 +306,6 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
-  'updateChallanRentDates' : IDL.Func([IDL.Vec(Challan)], [], []),
   'updateInventoryItem' : IDL.Func(
       [IDL.Text, IDL.Float64, IDL.Float64],
       [],
@@ -375,11 +358,6 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const BecomeAdminResponse = IDL.Record({
-    'isAlreadyAdmin' : IDL.Bool,
-    'error' : IDL.Opt(IDL.Text),
-    'success' : IDL.Bool,
-  });
   const Payment = IDL.Record({
     'id' : IDL.Text,
     'client' : IDL.Text,
@@ -416,26 +394,6 @@ export const idlFactory = ({ IDL }) => {
     'error' : IDL.Opt(IDL.Text),
     'success' : IDL.Bool,
   });
-  const Client = IDL.Record({ 'name' : IDL.Text, 'createdAt' : IDL.Int });
-  const ClientBulkCreateResult = IDL.Record({
-    'created' : IDL.Opt(Client),
-    'name' : IDL.Text,
-    'error' : IDL.Opt(IDL.Text),
-    'success' : IDL.Bool,
-  });
-  const InventoryItem = IDL.Record({
-    'dailyRate' : IDL.Float64,
-    'availableQuantity' : IDL.Float64,
-    'name' : IDL.Text,
-    'issuedQuantity' : IDL.Float64,
-    'totalQuantity' : IDL.Float64,
-  });
-  const InventoryBulkCreateResult = IDL.Record({
-    'created' : IDL.Opt(InventoryItem),
-    'name' : IDL.Text,
-    'error' : IDL.Opt(IDL.Text),
-    'success' : IDL.Bool,
-  });
   const ChallanItem = IDL.Record({
     'rate' : IDL.Float64,
     'rentalDays' : IDL.Float64,
@@ -460,6 +418,26 @@ export const idlFactory = ({ IDL }) => {
     'error' : IDL.Opt(IDL.Text),
     'success' : IDL.Bool,
   });
+  const Client = IDL.Record({ 'name' : IDL.Text, 'createdAt' : IDL.Int });
+  const ClientBulkCreateResult = IDL.Record({
+    'created' : IDL.Opt(Client),
+    'name' : IDL.Text,
+    'error' : IDL.Opt(IDL.Text),
+    'success' : IDL.Bool,
+  });
+  const InventoryItem = IDL.Record({
+    'dailyRate' : IDL.Float64,
+    'availableQuantity' : IDL.Float64,
+    'name' : IDL.Text,
+    'issuedQuantity' : IDL.Float64,
+    'totalQuantity' : IDL.Float64,
+  });
+  const InventoryBulkCreateResult = IDL.Record({
+    'created' : IDL.Opt(InventoryItem),
+    'name' : IDL.Text,
+    'error' : IDL.Opt(IDL.Text),
+    'success' : IDL.Bool,
+  });
   const PettyCashWithAttachments = IDL.Record({
     'attachments' : IDL.Vec(PettyCashAttachment),
     'pettyCash' : PettyCash,
@@ -467,9 +445,8 @@ export const idlFactory = ({ IDL }) => {
   const BuildMetadata = IDL.Record({
     'gitCommitHash' : IDL.Text,
     'buildTime' : IDL.Int,
-    'canisterId' : IDL.Principal,
+    'canisterId' : IDL.Text,
   });
-  const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const ApprovalStatus = IDL.Variant({
     'pending' : IDL.Null,
     'approved' : IDL.Null,
@@ -548,7 +525,6 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'becomeBootstrapAdmin' : IDL.Func([IDL.Bool], [BecomeAdminResponse], []),
     'bulkAddPayments' : IDL.Func(
         [IDL.Vec(Payment)],
         [IDL.Vec(PaymentBulkCreateResult)],
@@ -557,6 +533,11 @@ export const idlFactory = ({ IDL }) => {
     'bulkAddPettyCash' : IDL.Func(
         [IDL.Vec(PettyCash)],
         [IDL.Vec(PettyCashBulkCreateResult)],
+        [],
+      ),
+    'bulkCreateChallans' : IDL.Func(
+        [IDL.Vec(Challan)],
+        [IDL.Vec(BulkChallanCreateResult)],
         [],
       ),
     'bulkCreateClients' : IDL.Func(
@@ -570,11 +551,6 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'clearPettyCashAttachments' : IDL.Func([IDL.Int], [], []),
-    'createBulkChallans' : IDL.Func(
-        [IDL.Vec(Challan)],
-        [IDL.Vec(BulkChallanCreateResult)],
-        [],
-      ),
     'createChallan' : IDL.Func(
         [
           IDL.Text,
@@ -609,7 +585,6 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getBuildMetadata' : IDL.Func([], [BuildMetadata], ['query']),
-    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getChallansByClient' : IDL.Func([IDL.Text], [IDL.Vec(Challan)], ['query']),
     'getChallansByDateRange' : IDL.Func(
@@ -629,14 +604,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(PettyCash)],
         ['query'],
       ),
-    'getUserProfile' : IDL.Func(
-        [IDL.Principal],
-        [IDL.Opt(UserProfile)],
-        ['query'],
-      ),
     'healthCheck' : IDL.Func([], [IDL.Int], ['query']),
-    'isAdminOrBootstrapAdminExternal' : IDL.Func([], [IDL.Bool], ['query']),
-    'isBootstrapAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
     'listApprovals' : IDL.Func([], [IDL.Vec(UserApprovalInfo)], ['query']),
@@ -648,7 +616,6 @@ export const idlFactory = ({ IDL }) => {
       ),
     'requestApproval' : IDL.Func([], [], []),
     'revertChallanToActive' : IDL.Func([IDL.Text], [], []),
-    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setApproval' : IDL.Func([IDL.Principal, ApprovalStatus], [], []),
     'updateChallan' : IDL.Func(
         [
@@ -664,7 +631,6 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
-    'updateChallanRentDates' : IDL.Func([IDL.Vec(Challan)], [], []),
     'updateInventoryItem' : IDL.Func(
         [IDL.Text, IDL.Float64, IDL.Float64],
         [],

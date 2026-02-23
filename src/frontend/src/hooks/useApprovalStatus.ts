@@ -1,63 +1,45 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useActor } from './useActor';
+import { useQuery } from '@tanstack/react-query';
 
-// Export query keys for external invalidation
 export const APPROVAL_QUERY_KEYS = {
   isCallerApproved: ['isCallerApproved'],
   isCallerAdmin: ['isCallerAdmin'],
 };
 
 /**
- * Hook to check if the current caller is approved to access the application.
- * Refetches periodically and on window focus so users see access granted automatically.
+ * Hook that always returns approved status (no authentication required).
  */
 export function useIsCallerApproved() {
-  const { actor, isFetching } = useActor();
-
   return useQuery<boolean>({
     queryKey: APPROVAL_QUERY_KEYS.isCallerApproved,
-    queryFn: async () => {
-      if (!actor) return false;
-      return actor.isCallerApproved();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: async () => true,
+    enabled: true,
     retry: false,
-    refetchInterval: 5000, // Refetch every 5 seconds
-    refetchOnWindowFocus: true, // Refetch when window gains focus
+    staleTime: Infinity,
   });
 }
 
 /**
- * Hook to check if the current caller is an admin.
+ * Hook that always returns admin status (no authentication required).
  */
 export function useIsCallerAdmin() {
-  const { actor, isFetching } = useActor();
-
   return useQuery<boolean>({
     queryKey: APPROVAL_QUERY_KEYS.isCallerAdmin,
-    queryFn: async () => {
-      if (!actor) return false;
-      return actor.isCallerAdmin();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: async () => true,
+    enabled: true,
     retry: false,
+    staleTime: Infinity,
   });
 }
 
 /**
- * Mutation hook to request approval for the current caller.
+ * No-op mutation hook (approval system removed).
  */
 export function useRequestApproval() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.requestApproval();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: APPROVAL_QUERY_KEYS.isCallerApproved });
-    },
-  });
+  return {
+    mutate: () => {},
+    mutateAsync: async () => {},
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+  };
 }

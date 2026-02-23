@@ -1,61 +1,209 @@
 {
   "kind": "build_request",
-  "title": "Remove connection error UI blocking main app access",
-  "projectName": "RentIQ Udaipur",
+  "title": "Remove all authentication logic and make application fully public",
+  "projectName": "RENTIQ Udaipur",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Remove the BackendConnectionGate component wrapper from the App.tsx router configuration to prevent connection diagnostics UI from blocking access to the dashboard and other application modules",
+      "text": "Remove all Internet Identity authentication logic from the frontend including SignInScreen, SignInRequiredDialog, and all authentication-related components",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1",
-          "msg-3",
-          "msg-5",
-          "msg-7"
+          "msg-last"
         ],
         "quotes": [
-          "can you remove that completely Connection Failed Unable to connect to the backend",
-          "you want me to completely remove the connection error handling code",
-          "its blocking the main app",
-          "I'll completely remove all the connection error handling code"
+          "Yes",
+          "Fix and build again"
         ]
       },
       "acceptanceCriteria": [
-        "Users can immediately access the dashboard without seeing connection error messages",
-        "No connection diagnostics UI, retry buttons, or error messages are displayed",
-        "The main app (dashboard and other modules/modals) renders directly without being blocked"
+        "SignInScreen component is removed or disabled",
+        "SignInRequiredDialog component is removed or disabled",
+        "No authentication prompts appear when accessing the application",
+        "Application loads directly to the dashboard without login"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Remove the BackendConnectionGate.tsx component file from frontend/src/components/common/ since it is no longer used",
+      "text": "Remove AuthApprovalGate component or modify it to always render children without checking authentication or approval status",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3",
-          "msg-7"
+          "msg-last"
+        ],
+        "quotes": [
+          "Yes",
+          "remove the logic of admin and users login"
         ]
       },
       "acceptanceCriteria": [
-        "The BackendConnectionGate.tsx file is deleted from the codebase",
-        "No unused imports or references to BackendConnectionGate remain"
+        "AuthApprovalGate no longer blocks access based on authentication",
+        "Application renders main content immediately without authentication checks",
+        "No approval screens or gates are shown to users"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Remove useInternetIdentity hook dependencies and replace all authentication state checks with default authenticated state throughout the application",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "remove the logic of admin and users login"
+        ]
+      },
+      "acceptanceCriteria": [
+        "useInternetIdentity hook is no longer used in components",
+        "All isAuthenticated checks are removed or hardcoded to true",
+        "No authentication-related context providers wrap the application"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Remove admin role checks, staff restrictions, and approval status checks from all components and hooks including useStaffRestrictions, useAppMode, and useApprovalStatus",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "remove the logic of admin and users login"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All users can access bulk upload functionality",
+        "All users can perform delete operations",
+        "Admin-only routes and features are accessible to everyone",
+        "Access Management page is removed or accessible to all"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Remove access control, user approval, and authentication mixins from backend/main.mo and disable all authentication checks in backend endpoints",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "remove the logic of admin and users login"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Backend endpoints no longer require authentication",
+        "User approval system is removed from backend",
+        "Admin bootstrapping logic is removed",
+        "All backend methods are publicly accessible"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Remove useMutationGate hook or modify it to always return mutations as ready without checking authentication state",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "remove the logic of admin and users login"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All mutations are immediately available without authentication checks",
+        "useMutationGate no longer blocks mutations based on auth state",
+        "Components can perform mutations without authentication"
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "text": "Modify useActor hook to create backend actor instances without requiring Internet Identity authentication or admin token parameters",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "remove the logic of admin and users login"
+        ]
+      },
+      "acceptanceCriteria": [
+        "useActor hook creates actor without identity parameter",
+        "Admin token URL parameter is no longer used",
+        "Backend actor connects using anonymous identity or no authentication"
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "text": "Remove ApprovalRequiredScreen component and all approval request functionality from the frontend",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "remove the logic of admin and users login"
+        ]
+      },
+      "acceptanceCriteria": [
+        "ApprovalRequiredScreen is removed or never rendered",
+        "No approval request functionality exists",
+        "Users never see approval pending messages"
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "text": "Remove useBootstrapAdmin hook and all admin bootstrapping logic from the frontend",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "remove the logic of admin and users login"
+        ]
+      },
+      "acceptanceCriteria": [
+        "useBootstrapAdmin hook is removed or unused",
+        "No admin bootstrapping occurs on admin domains",
+        "Admin token handling is removed"
+      ]
+    },
+    {
+      "id": "REQ-10",
+      "text": "Remove UserProfile data type and all user management endpoints from backend/main.mo including approval, profile, and admin check methods",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "remove the logic of admin and users login"
+        ]
+      },
+      "acceptanceCriteria": [
+        "UserProfile type is removed from backend",
+        "User approval endpoints no longer exist",
+        "Admin check methods are removed",
+        "User-related storage maps are removed"
       ]
     }
   ],
   "constraints": [
-    "Do not modify frontend/src/hooks/useInternetIdentity.ts",
-    "Do not modify frontend/src/hooks/useActor.ts",
-    "Do not modify frontend/src/main.tsx",
-    "Do not modify frontend/src/components/ui components",
-    "Preserve all other authentication and approval gate functionality (AuthApprovalGate, AppErrorBoundary)"
+    "Do not modify frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useActor.ts files directly - they are in immutablePaths",
+    "Maintain single-actor architecture in backend/main.mo",
+    "Do not introduce new authentication mechanisms while removing existing ones",
+    "Preserve all business logic for inventory, challans, payments, petty cash, and clients",
+    "Do not modify frontend/src/components/ui directory components"
   ],
   "nonGoals": [
-    "Fixing actual backend connectivity issues",
-    "Replacing the connection gate with alternative error handling",
-    "Modifying retry logic or connection diagnostics elsewhere in the app",
-    "Changing authentication flow or approval processes"
+    "Fixing the existing backend connection errors shown in screenshots (connection failures are separate from authentication removal)",
+    "Adding new security mechanisms or access controls",
+    "Implementing role-based permissions",
+    "Adding user registration or profile management features",
+    "Modifying the deployment configuration or canister settings"
   ],
   "imageRequirements": {
     "required": [],

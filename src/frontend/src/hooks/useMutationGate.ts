@@ -1,27 +1,22 @@
 import { useActorWithConnection } from './useActorWithConnection';
-import { useInternetIdentity } from './useInternetIdentity';
 
 export interface MutationGateState {
   canMutate: boolean;
-  isReady: boolean; // Alias for canMutate for backward compatibility
+  isReady: boolean;
   reason: string | null;
-  message: string | null; // Alias for reason for backward compatibility
+  message: string | null;
   isConnecting: boolean;
   isAuthenticated: boolean;
 }
 
 /**
- * Shared hook that gates mutations on actor readiness and authentication state,
- * with enhanced connection stage awareness for better user messaging
+ * Shared hook that gates mutations on actor readiness only (no authentication required).
  */
 export function useMutationGate(): MutationGateState {
   const { actor, connectionState, connectionStage } = useActorWithConnection();
-  const { identity } = useInternetIdentity();
 
-  const isAuthenticated = !!identity;
   const isConnecting = connectionState === 'probing' || connectionState === 'initializing';
 
-  // If backend is not connected
   if (!actor) {
     if (isConnecting) {
       const message = `Connecting to backend... (${connectionStage})`;
@@ -31,7 +26,7 @@ export function useMutationGate(): MutationGateState {
         reason: message,
         message,
         isConnecting: true,
-        isAuthenticated,
+        isAuthenticated: true,
       };
     }
     
@@ -43,7 +38,7 @@ export function useMutationGate(): MutationGateState {
         reason: message,
         message,
         isConnecting: false,
-        isAuthenticated,
+        isAuthenticated: true,
       };
     }
 
@@ -54,24 +49,10 @@ export function useMutationGate(): MutationGateState {
       reason: message,
       message,
       isConnecting: false,
-      isAuthenticated,
+      isAuthenticated: true,
     };
   }
 
-  // If not authenticated
-  if (!isAuthenticated) {
-    const message = 'You need to sign in to perform this action.';
-    return {
-      canMutate: false,
-      isReady: false,
-      reason: message,
-      message,
-      isConnecting: false,
-      isAuthenticated: false,
-    };
-  }
-
-  // All checks passed
   return {
     canMutate: true,
     isReady: true,
