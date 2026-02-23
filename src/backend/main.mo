@@ -12,9 +12,7 @@ import MixinStorage "blob-storage/Mixin";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import UserApproval "user-approval/approval";
-import Migration "migration";
 
-(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -501,7 +499,7 @@ actor {
     {
       buildTime;
       gitCommitHash;
-      canisterId = "Deprecate this endpoint as soon as possible, this needs a fix!";
+      canisterId = "c05l66bde8c3af0dd27a09a2167b2c6b3b001177";
     };
   };
 

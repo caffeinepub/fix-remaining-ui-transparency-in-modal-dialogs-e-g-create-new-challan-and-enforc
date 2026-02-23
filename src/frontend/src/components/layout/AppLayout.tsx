@@ -1,16 +1,28 @@
 import { Link, useLocation } from '@tanstack/react-router';
-import { Home, Package, FileText, CreditCard, Wallet, Users, BarChart3 } from 'lucide-react';
+import { Home, Package, FileText, CreditCard, Wallet, Users, BarChart3, Shield, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useInternetIdentity } from '../../hooks/useInternetIdentity';
+import { useIsCallerAdmin } from '../../hooks/useApprovalStatus';
+import { useQueryClient } from '@tanstack/react-query';
 import BuildInfo from '../common/BuildInfo';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { identity, clear } = useInternetIdentity();
+  const { data: isAdmin } = useIsCallerAdmin();
+  const queryClient = useQueryClient();
 
   const isPrintRoute = currentPath.includes('/print');
 
   if (isPrintRoute) {
     return <>{children}</>;
   }
+
+  const handleSignOut = async () => {
+    await clear();
+    queryClient.clear();
+  };
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: Home },
@@ -47,10 +59,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </Link>
                 );
               })}
+              {isAdmin && (
+                <Link
+                  to="/access-management"
+                  className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary ${
+                    currentPath === '/access-management' ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  <Shield className="h-4 w-4" />
+                  Access Management
+                </Link>
+              )}
             </nav>
           </div>
           <div className="flex items-center gap-4">
             <BuildInfo />
+            {identity && (
+              <Button onClick={handleSignOut} variant="outline" size="sm">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            )}
           </div>
         </div>
       </header>

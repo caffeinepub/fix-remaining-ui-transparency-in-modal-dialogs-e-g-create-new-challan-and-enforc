@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useActor } from './useActor';
 
 export const APPROVAL_QUERY_KEYS = {
   isCallerApproved: ['isCallerApproved'],
@@ -6,40 +7,54 @@ export const APPROVAL_QUERY_KEYS = {
 };
 
 /**
- * Hook that always returns approved status (no authentication required).
+ * Hook to check if current user is approved.
  */
 export function useIsCallerApproved() {
+  const { actor, isFetching } = useActor();
+
   return useQuery<boolean>({
     queryKey: APPROVAL_QUERY_KEYS.isCallerApproved,
-    queryFn: async () => true,
-    enabled: true,
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerApproved();
+    },
+    enabled: !!actor && !isFetching,
     retry: false,
-    staleTime: Infinity,
+    refetchInterval: 5000, // Refetch every 5 seconds for pending users
   });
 }
 
 /**
- * Hook that always returns admin status (no authentication required).
+ * Hook to check if current user is admin.
  */
 export function useIsCallerAdmin() {
+  const { actor, isFetching } = useActor();
+
   return useQuery<boolean>({
     queryKey: APPROVAL_QUERY_KEYS.isCallerAdmin,
-    queryFn: async () => true,
-    enabled: true,
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerAdmin();
+    },
+    enabled: !!actor && !isFetching,
     retry: false,
-    staleTime: Infinity,
   });
 }
 
 /**
- * No-op mutation hook (approval system removed).
+ * Mutation hook to request approval.
  */
 export function useRequestApproval() {
-  return {
-    mutate: () => {},
-    mutateAsync: async () => {},
-    isPending: false,
-    isSuccess: false,
-    isError: false,
-  };
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.requestApproval();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: APPROVAL_QUERY_KEYS.isCallerApproved });
+    },
+  });
 }

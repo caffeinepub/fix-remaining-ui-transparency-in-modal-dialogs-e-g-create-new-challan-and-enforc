@@ -1,4 +1,5 @@
-import { useActorWithConnection } from './useActorWithConnection';
+import { useActor } from './useActor';
+import { useInternetIdentity } from './useInternetIdentity';
 
 export interface MutationGateState {
   canMutate: boolean;
@@ -10,34 +11,36 @@ export interface MutationGateState {
 }
 
 /**
- * Shared hook that gates mutations on actor readiness only (no authentication required).
+ * Shared hook that gates mutations on actor readiness and authentication.
  */
 export function useMutationGate(): MutationGateState {
-  const { actor, connectionState, connectionStage } = useActorWithConnection();
+  const { actor, isFetching } = useActor();
+  const { identity, isInitializing } = useInternetIdentity();
 
-  const isConnecting = connectionState === 'probing' || connectionState === 'initializing';
+  const isConnecting = isFetching || isInitializing;
 
+  // Check authentication first
+  if (!identity) {
+    return {
+      canMutate: false,
+      isReady: false,
+      reason: 'not-authenticated',
+      message: 'You must sign in to perform this action',
+      isConnecting: false,
+      isAuthenticated: false,
+    };
+  }
+
+  // Check actor availability
   if (!actor) {
     if (isConnecting) {
-      const message = `Connecting to backend... (${connectionStage})`;
+      const message = 'Connecting to backend...';
       return {
         canMutate: false,
         isReady: false,
         reason: message,
         message,
         isConnecting: true,
-        isAuthenticated: true,
-      };
-    }
-    
-    if (connectionState === 'timeout') {
-      const message = 'Backend connection timed out. Please retry the connection.';
-      return {
-        canMutate: false,
-        isReady: false,
-        reason: message,
-        message,
-        isConnecting: false,
         isAuthenticated: true,
       };
     }

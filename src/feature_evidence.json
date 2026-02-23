@@ -2,54 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-remove-all-internet-identity-authentication-logic-from-the-frontend-including-signinscreen-signinrequireddialog-and-all-authentication-related-components",
-      "featureTitle": "Remove all Internet Identity authentication logic from the frontend including SignInScreen, SignInRequiredDialog, and all authentication-related components",
-      "files": [
-        "frontend/src/components/common/SignInRequiredDialog.tsx",
-        "frontend/src/components/common/SignInScreen.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0",
-        "user-approval@3.0.0"
-      ],
-      "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-remove-authapprovalgate-component-or-modify-it-to-always-render-children-without-checking-authentication-or-approval-status",
-      "featureTitle": "Remove AuthApprovalGate component or modify it to always render children without checking authentication or approval status",
+      "featureId": "feature-re-enable-authapprovalgate-component-in-frontend-src-components-common-authapprovalgate-tsx-to-block-unauthenticated-and-unapproved-users-from-accessing-application-routes",
+      "featureTitle": "Re-enable AuthApprovalGate component in frontend/src/components/common/AuthApprovalGate.tsx to block unauthenticated and unapproved users from accessing application routes",
       "files": [
         "frontend/src/App.tsx",
         "frontend/src/components/common/AuthApprovalGate.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0",
-        "user-approval@3.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-remove-useinternetidentity-hook-dependencies-and-replace-all-authentication-state-checks-with-default-authenticated-state-throughout-the-application",
-      "featureTitle": "Remove useInternetIdentity hook dependencies and replace all authentication state checks with default authenticated state throughout the application",
-      "files": [
-        "frontend/src/components/layout/AppLayout.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -67,14 +24,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-remove-admin-role-checks-staff-restrictions-and-approval-status-checks-from-all-components-and-hooks-including-usestaffrestrictions-useappmode-and-useapprovalstatus",
-      "featureTitle": "Remove admin role checks, staff restrictions, and approval status checks from all components and hooks including useStaffRestrictions, useAppMode, and useApprovalStatus",
+      "featureId": "feature-restore-signinscreen-component-in-frontend-src-components-common-signinscreen-tsx-to-provide-internet-identity-login-interface",
+      "featureTitle": "Restore SignInScreen component in frontend/src/components/common/SignInScreen.tsx to provide Internet Identity login interface",
       "files": [
-        "frontend/src/components/layout/AppLayout.tsx",
-        "frontend/src/hooks/useApprovalStatus.ts",
-        "frontend/src/hooks/useStaffRestrictions.ts",
-        "frontend/src/pages/AccessManagementPage.tsx",
-        "frontend/src/pages/InventoryPage.tsx"
+        "frontend/src/components/common/SignInScreen.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -92,10 +45,31 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-remove-usemutationgate-hook-or-modify-it-to-always-return-mutations-as-ready-without-checking-authentication-state",
-      "featureTitle": "Remove useMutationGate hook or modify it to always return mutations as ready without checking authentication state",
+      "featureId": "feature-restore-approvalrequiredscreen-component-in-frontend-src-components-common-approvalrequiredscreen-tsx-to-display-pending-approval-status-for-logged-in-but-unapproved-users",
+      "featureTitle": "Restore ApprovalRequiredScreen component in frontend/src/components/common/ApprovalRequiredScreen.tsx to display pending approval status for logged-in but unapproved users",
       "files": [
-        "frontend/src/hooks/useMutationGate.ts"
+        "frontend/src/components/common/ApprovalRequiredScreen.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-5"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-restore-signinrequireddialog-component-in-frontend-src-components-common-signinrequireddialog-tsx-to-prompt-users-to-authenticate-before-performing-restricted-actions",
+      "featureTitle": "Restore SignInRequiredDialog component in frontend/src/components/common/SignInRequiredDialog.tsx to prompt users to authenticate before performing restricted actions",
+      "files": [
+        "frontend/src/components/common/SignInRequiredDialog.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -113,10 +87,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-modify-useactor-hook-to-create-backend-actor-instances-without-requiring-internet-identity-authentication-or-admin-token-parameters",
-      "featureTitle": "Modify useActor hook to create backend actor instances without requiring Internet Identity authentication or admin token parameters",
+      "featureId": "feature-restore-useapprovalstatus-hook-in-frontend-src-hooks-useapprovalstatus-ts-to-check-user-approval-and-admin-status-with-backend",
+      "featureTitle": "Restore useApprovalStatus hook in frontend/src/hooks/useApprovalStatus.ts to check user approval and admin status with backend",
       "files": [
-        "frontend/src/hooks/useActorWithConnection.ts"
+        "frontend/src/hooks/useApprovalStatus.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -134,10 +108,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-remove-approvalrequiredscreen-component-and-all-approval-request-functionality-from-the-frontend",
-      "featureTitle": "Remove ApprovalRequiredScreen component and all approval request functionality from the frontend",
+      "featureId": "feature-restore-usebootstrapadmin-hook-in-frontend-src-hooks-usebootstrapadmin-ts-to-enable-automatic-admin-bootstrapping-for-first-admin-domain-user",
+      "featureTitle": "Restore useBootstrapAdmin hook in frontend/src/hooks/useBootstrapAdmin.ts to enable automatic admin bootstrapping for first admin domain user",
       "files": [
-        "frontend/src/components/common/ApprovalRequiredScreen.tsx"
+        "frontend/src/hooks/useBootstrapAdmin.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -155,11 +129,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-remove-usebootstrapadmin-hook-and-all-admin-bootstrapping-logic-from-the-frontend",
-      "featureTitle": "Remove useBootstrapAdmin hook and all admin bootstrapping logic from the frontend",
+      "featureId": "feature-restore-usestaffrestrictions-hook-in-frontend-src-hooks-usestaffrestrictions-ts-to-enforce-staff-mode-restrictions-on-bulk-upload-and-delete-operations-based-on-app-mode-and-admin-status",
+      "featureTitle": "Restore useStaffRestrictions hook in frontend/src/hooks/useStaffRestrictions.ts to enforce staff mode restrictions on bulk upload and delete operations based on app mode and admin status",
       "files": [
-        "frontend/src/components/common/AuthApprovalGate.tsx",
-        "frontend/src/hooks/useBootstrapAdmin.ts"
+        "frontend/src/hooks/useStaffRestrictions.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -173,6 +146,50 @@
       ],
       "testIds": [
         "REQ-9"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-restore-accessmanagementpage-in-frontend-src-pages-accessmanagementpage-tsx-as-admin-only-page-for-viewing-and-managing-user-approval-requests",
+      "featureTitle": "Restore AccessManagementPage in frontend/src/pages/AccessManagementPage.tsx as admin-only page for viewing and managing user approval requests",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/layout/AppLayout.tsx",
+        "frontend/src/pages/AccessManagementPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-10"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-re-enable-authentication-and-approval-checks-in-all-mutation-operations-across-frontend-dialogs-challanformdialog-challaneditdialog-inventoryformdialog-paymentformdialog-pettycashformdialog-clientbulkuploaddialog-etc",
+      "featureTitle": "Re-enable authentication and approval checks in all mutation operations across frontend dialogs (ChallanFormDialog, ChallanEditDialog, InventoryFormDialog, PaymentFormDialog, PettyCashFormDialog, ClientBulkUploadDialog, etc.)",
+      "files": [
+        "frontend/src/hooks/useMutationGate.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-11"
       ],
       "confidence": "high"
     }

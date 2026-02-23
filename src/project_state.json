@@ -1,76 +1,91 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "RentIQ property management application - removing admin and user authentication to make it fully public",
+  "summary": "Rentiq Udaipur - Equipment rental management system with Internet Identity authentication, admin approval workflows, inventory, challans, payments, petty cash, and client balance tracking. Currently reverting from version 77 (public/no-auth) back to version 71 (authenticated with access controls).",
   "architectural_notes": [
-    "Application will be fully public with no authentication"
+    "Version 71 had Internet Identity authentication with admin approval workflows and role-based access control",
+    "Version 77 removed all authentication, making the app fully public - this needs to be reverted",
+    "Backend canister ID needs correction: user provided two different IDs (c05156bde8c3af0dd27a09a2167b2c6b3b00177 vs c05l66bde8c3af0dd27a09a2167b2c6b3b001177)",
+    "Migration.mo file added in v77 must be removed as part of rollback",
+    "User requests complete restoration of v71 state including all data behavior and authentication flows"
   ],
   "known_issues": [
-    "Backend connection errors occurring (canister unreachable)"
+    "Current version 77 has no authentication - anyone can access all features and data",
+    "Version 77 removed Internet Identity authentication that existed in version 71",
+    "Backend canister connection may be incorrect - conflicting IDs provided by user",
+    "Data created in public v77 state will require login access after v71 restoration"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-remove-all-internet-identity-authentication-logic-from-the-frontend-including-signinscreen-signinrequireddialog-and-all-authentication-related-components",
-      "title": "Remove all Internet Identity authentication logic from the frontend including SignInScreen, SignInRequiredDialog, and all authentication-related components",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-remove-authapprovalgate-component-or-modify-it-to-always-render-children-without-checking-authentication-or-approval-status",
-      "title": "Remove AuthApprovalGate component or modify it to always render children without checking authentication or approval status",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-remove-useinternetidentity-hook-dependencies-and-replace-all-authentication-state-checks-with-default-authenticated-state-throughout-the-application",
-      "title": "Remove useInternetIdentity hook dependencies and replace all authentication state checks with default authenticated state throughout the application",
+      "id": "feature-re-enable-authapprovalgate-component-in-frontend-src-components-common-authapprovalgate-tsx-to-block-unauthenticated-and-unapproved-users-from-accessing-application-routes",
+      "title": "Re-enable AuthApprovalGate component in frontend/src/components/common/AuthApprovalGate.tsx to block unauthenticated and unapproved users from accessing application routes",
       "reqIds": [
         "REQ-3"
       ],
       "version": 1
     },
     {
-      "id": "feature-remove-admin-role-checks-staff-restrictions-and-approval-status-checks-from-all-components-and-hooks-including-usestaffrestrictions-useappmode-and-useapprovalstatus",
-      "title": "Remove admin role checks, staff restrictions, and approval status checks from all components and hooks including useStaffRestrictions, useAppMode, and useApprovalStatus",
+      "id": "feature-restore-signinscreen-component-in-frontend-src-components-common-signinscreen-tsx-to-provide-internet-identity-login-interface",
+      "title": "Restore SignInScreen component in frontend/src/components/common/SignInScreen.tsx to provide Internet Identity login interface",
       "reqIds": [
         "REQ-4"
       ],
       "version": 1
     },
     {
-      "id": "feature-remove-usemutationgate-hook-or-modify-it-to-always-return-mutations-as-ready-without-checking-authentication-state",
-      "title": "Remove useMutationGate hook or modify it to always return mutations as ready without checking authentication state",
+      "id": "feature-restore-approvalrequiredscreen-component-in-frontend-src-components-common-approvalrequiredscreen-tsx-to-display-pending-approval-status-for-logged-in-but-unapproved-users",
+      "title": "Restore ApprovalRequiredScreen component in frontend/src/components/common/ApprovalRequiredScreen.tsx to display pending approval status for logged-in but unapproved users",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-signinrequireddialog-component-in-frontend-src-components-common-signinrequireddialog-tsx-to-prompt-users-to-authenticate-before-performing-restricted-actions",
+      "title": "Restore SignInRequiredDialog component in frontend/src/components/common/SignInRequiredDialog.tsx to prompt users to authenticate before performing restricted actions",
       "reqIds": [
         "REQ-6"
       ],
       "version": 1
     },
     {
-      "id": "feature-modify-useactor-hook-to-create-backend-actor-instances-without-requiring-internet-identity-authentication-or-admin-token-parameters",
-      "title": "Modify useActor hook to create backend actor instances without requiring Internet Identity authentication or admin token parameters",
+      "id": "feature-restore-useapprovalstatus-hook-in-frontend-src-hooks-useapprovalstatus-ts-to-check-user-approval-and-admin-status-with-backend",
+      "title": "Restore useApprovalStatus hook in frontend/src/hooks/useApprovalStatus.ts to check user approval and admin status with backend",
       "reqIds": [
         "REQ-7"
       ],
       "version": 1
     },
     {
-      "id": "feature-remove-approvalrequiredscreen-component-and-all-approval-request-functionality-from-the-frontend",
-      "title": "Remove ApprovalRequiredScreen component and all approval request functionality from the frontend",
+      "id": "feature-restore-usebootstrapadmin-hook-in-frontend-src-hooks-usebootstrapadmin-ts-to-enable-automatic-admin-bootstrapping-for-first-admin-domain-user",
+      "title": "Restore useBootstrapAdmin hook in frontend/src/hooks/useBootstrapAdmin.ts to enable automatic admin bootstrapping for first admin domain user",
       "reqIds": [
         "REQ-8"
       ],
       "version": 1
     },
     {
-      "id": "feature-remove-usebootstrapadmin-hook-and-all-admin-bootstrapping-logic-from-the-frontend",
-      "title": "Remove useBootstrapAdmin hook and all admin bootstrapping logic from the frontend",
+      "id": "feature-restore-usestaffrestrictions-hook-in-frontend-src-hooks-usestaffrestrictions-ts-to-enforce-staff-mode-restrictions-on-bulk-upload-and-delete-operations-based-on-app-mode-and-admin-status",
+      "title": "Restore useStaffRestrictions hook in frontend/src/hooks/useStaffRestrictions.ts to enforce staff mode restrictions on bulk upload and delete operations based on app mode and admin status",
       "reqIds": [
         "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-accessmanagementpage-in-frontend-src-pages-accessmanagementpage-tsx-as-admin-only-page-for-viewing-and-managing-user-approval-requests",
+      "title": "Restore AccessManagementPage in frontend/src/pages/AccessManagementPage.tsx as admin-only page for viewing and managing user approval requests",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-re-enable-authentication-and-approval-checks-in-all-mutation-operations-across-frontend-dialogs-challanformdialog-challaneditdialog-inventoryformdialog-paymentformdialog-pettycashformdialog-clientbulkuploaddialog-etc",
+      "title": "Re-enable authentication and approval checks in all mutation operations across frontend dialogs (ChallanFormDialog, ChallanEditDialog, InventoryFormDialog, PaymentFormDialog, PettyCashFormDialog, ClientBulkUploadDialog, etc.)",
+      "reqIds": [
+        "REQ-11"
       ],
       "version": 1
     }
@@ -78,28 +93,56 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Remove all admin and user login/authentication logic",
+      "summary": "Restore version 71 functionality: Re-implement Internet Identity authentication with admin bootstrapping and approval workflows",
       "reqIds": [],
       "status": "pending"
     },
     {
-      "id": "AR-6",
-      "summary": "Remove access control, user approval, and authentication mixins from backend/main.mo and disable all authentication checks in backend endpoints",
+      "id": "AR-2",
+      "summary": "Remove all changes made between version 71 and version 77, including migration.mo and authentication removal",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Update backend canister ID from c05156bde8c3af0dd27a09a2167b2c6b3b00177 to the correct ID shown in screenshots (c05l66bde8c3af0dd27a09a2167b2c6b3b001177)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Remove backend/migration.mo file entirely from the project",
       "reqIds": [
-        "REQ-5"
+        "REQ-1"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-11",
-      "summary": "Remove UserProfile data type and all user management endpoints from backend/main.mo including approval, profile, and admin check methods",
+      "id": "AR-5",
+      "summary": "Restore Internet Identity authentication with admin bootstrapping mechanism in backend/main.mo, exactly as implemented in version 71",
       "reqIds": [
-        "REQ-10"
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Update backend canister ID reference from c05156bde8c3af0dd27a09a2167b2c6b3b00177 to c05l66bde8c3af0dd27a09a2167b2c6b3b001177 as shown in screenshot",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "Remove all features, functions, formulas, and UI changes that were added or modified between version 71 and version 77, preserving only version 71 functionality",
+      "reqIds": [
+        "REQ-13"
       ],
       "status": "pending"
     }
   ],
-  "projectName": "RentIQ",
+  "projectName": "Rentiq Udaipur",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

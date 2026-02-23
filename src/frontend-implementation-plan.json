@@ -1,215 +1,274 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Remove all authentication logic and make application fully public",
+  "title": "Restore Version 71 with Internet Identity Authentication and Access Controls - Frontend",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Remove all Internet Identity authentication logic from the frontend including SignInScreen, SignInRequiredDialog, and all authentication-related components",
+      "id": "REQ-3",
+      "summary": "Re-enable AuthApprovalGate component to block unauthenticated and unapproved users from accessing application routes",
       "acceptanceCriteria": [
-        "SignInScreen component is removed or disabled",
-        "SignInRequiredDialog component is removed or disabled",
-        "No authentication prompts appear when accessing the application",
-        "Application loads directly to the dashboard without login"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/common/SignInScreen.tsx",
-          "operation": "modify",
-          "description": "Disable SignInScreen by making it render null or an empty fragment so it never displays, preventing any login prompts from appearing"
-        },
-        {
-          "path": "frontend/src/components/common/SignInRequiredDialog.tsx",
-          "operation": "modify",
-          "description": "Disable SignInRequiredDialog by making it render null or return early without displaying any authentication prompts"
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Remove AuthApprovalGate component or modify it to always render children without checking authentication or approval status",
-      "acceptanceCriteria": [
-        "AuthApprovalGate no longer blocks access based on authentication",
-        "Application renders main content immediately without authentication checks",
-        "No approval screens or gates are shown to users"
+        "AuthApprovalGate checks Internet Identity authentication status",
+        "Unauthenticated users are redirected to sign-in screen",
+        "Authenticated but unapproved users see approval required screen",
+        "Admin users from admin domains are auto-bootstrapped on first login"
       ],
       "file_operations": [
         {
           "path": "frontend/src/components/common/AuthApprovalGate.tsx",
           "operation": "modify",
-          "description": "Modify AuthApprovalGate to unconditionally render its children prop without performing any authentication, approval, or actor readiness checks, effectively bypassing all access control"
+          "description": "Restore full authentication and approval gating logic. Check authentication status using useInternetIdentity hook. If not authenticated, render SignInScreen. If authenticated but not approved, render ApprovalRequiredScreen. Use useApprovalStatus hook to check approval state. Use useBootstrapAdmin hook to attempt admin bootstrapping for first admin domain user. Only render children when user is authenticated and approved or is admin."
         },
         {
           "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Remove or comment out the AuthApprovalGate wrapper from the router tree so the application renders directly without any authentication gating"
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Replace all authentication state checks with default authenticated state throughout the application",
-      "acceptanceCriteria": [
-        "useInternetIdentity hook is no longer used in components",
-        "All isAuthenticated checks are removed or hardcoded to true",
-        "No authentication-related context providers wrap the application"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/main.tsx",
-          "operation": "modify",
-          "description": "Remove InternetIdentityProvider wrapper from the React root so no authentication context is provided to the application"
-        },
-        {
-          "path": "frontend/src/components/layout/AppLayout.tsx",
-          "operation": "modify",
-          "description": "Remove any useInternetIdentity hook calls and authentication state checks; simplify login/logout UI elements or remove them entirely"
+          "description": "Wrap the router routes with AuthApprovalGate component to enforce authentication and approval checks on all application routes. Ensure AuthApprovalGate is placed inside the QueryClientProvider and InternetIdentityProvider context."
         }
       ]
     },
     {
       "id": "REQ-4",
-      "summary": "Remove admin role checks, staff restrictions, and approval status checks from all components and hooks including useStaffRestrictions, useAppMode, and useApprovalStatus",
+      "summary": "Restore SignInScreen component to provide Internet Identity login interface",
       "acceptanceCriteria": [
-        "All users can access bulk upload functionality",
-        "All users can perform delete operations",
-        "Admin-only routes and features are accessible to everyone",
-        "Access Management page is removed or accessible to all"
+        "SignInScreen displays Internet Identity login button",
+        "Clicking login triggers Internet Identity authentication flow",
+        "After successful login, user is redirected to appropriate screen based on approval status"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useStaffRestrictions.ts",
+          "path": "frontend/src/components/common/SignInScreen.tsx",
           "operation": "modify",
-          "description": "Modify useStaffRestrictions to always return { canDelete: true, canBulkUpload: true } without checking admin status or app mode, enabling all users to perform restricted operations"
-        },
-        {
-          "path": "frontend/src/hooks/useApprovalStatus.ts",
-          "operation": "modify",
-          "description": "Modify useApprovalStatus to always return isApproved: true and isAdmin: true without querying the backend, removing all approval and admin checks"
-        },
-        {
-          "path": "frontend/src/components/challans/ChallanBulkUploadDialog.tsx",
-          "operation": "modify",
-          "description": "Remove useStaffRestrictions check and related error messages so all users can access bulk challan upload functionality"
-        },
-        {
-          "path": "frontend/src/components/inventory/InventoryBulkUploadDialog.tsx",
-          "operation": "modify",
-          "description": "Remove useStaffRestrictions check and related error messages so all users can access bulk inventory upload functionality"
-        },
-        {
-          "path": "frontend/src/components/payments/PaymentBulkUploadDialog.tsx",
-          "operation": "modify",
-          "description": "Remove useStaffRestrictions check and related error messages so all users can access bulk payment upload functionality"
-        },
-        {
-          "path": "frontend/src/components/petty-cash/PettyCashBulkUploadDialog.tsx",
-          "operation": "modify",
-          "description": "Remove useStaffRestrictions check and related error messages so all users can access bulk petty cash upload functionality"
-        },
-        {
-          "path": "frontend/src/components/clients/ClientBulkUploadDialog.tsx",
-          "operation": "modify",
-          "description": "Remove useStaffRestrictions check and related error messages so all users can access bulk client upload functionality"
-        },
-        {
-          "path": "frontend/src/components/challans/ChallanNewFormatBulkUploadDialog.tsx",
-          "operation": "modify",
-          "description": "Remove useStaffRestrictions check and related error messages so all users can access new format challan bulk upload functionality"
-        },
-        {
-          "path": "frontend/src/components/challans/ChallanRestoreDatesDialog.tsx",
-          "operation": "modify",
-          "description": "Remove useStaffRestrictions check and related error messages so all users can access challan date restoration functionality"
-        },
-        {
-          "path": "frontend/src/pages/ChallansPage.tsx",
-          "operation": "modify",
-          "description": "Remove useStaffRestrictions check that controls delete operation visibility; enable delete functionality for all users"
-        },
-        {
-          "path": "frontend/src/pages/InventoryPage.tsx",
-          "operation": "modify",
-          "description": "Remove useMutationGate and SignInRequiredDialog dependencies; remove useStaffRestrictions check that controls delete operations; enable all inventory operations for all users"
-        },
-        {
-          "path": "frontend/src/pages/AccessManagementPage.tsx",
-          "operation": "modify",
-          "description": "Remove admin-only access checks and make the page accessible to all users, or remove the page entirely if no longer needed without authentication"
-        },
-        {
-          "path": "frontend/src/components/layout/AppLayout.tsx",
-          "operation": "modify",
-          "description": "Remove admin mode badges, conditional Access Management link visibility, and any admin/staff role indicators from the layout"
+          "description": "Restore full SignInScreen component implementation. Display a centered screen with application branding and Internet Identity login button. Use useInternetIdentity hook to access login function. Handle login button click to trigger Internet Identity authentication flow. Show loading state during login. Include error handling for login failures."
         }
       ]
     },
     {
-      "id": "REQ-6",
-      "summary": "Remove useMutationGate hook or modify it to always return mutations as ready without checking authentication state",
+      "id": "REQ-5",
+      "summary": "Restore ApprovalRequiredScreen component to display pending approval status for logged-in but unapproved users",
       "acceptanceCriteria": [
-        "All mutations are immediately available without authentication checks",
-        "useMutationGate no longer blocks mutations based on auth state",
-        "Components can perform mutations without authentication"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/useMutationGate.ts",
-          "operation": "modify",
-          "description": "Modify useMutationGate to always return { mutationsReady: true, blockingReason: null } without checking actor state or authentication, allowing all mutations to proceed immediately"
-        }
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "summary": "Modify useActor hook to create backend actor instances without requiring Internet Identity authentication or admin token parameters",
-      "acceptanceCriteria": [
-        "useActor hook creates actor without identity parameter",
-        "Admin token URL parameter is no longer used",
-        "Backend actor connects using anonymous identity or no authentication"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/useActorWithConnection.ts",
-          "operation": "modify",
-          "description": "Modify useActorWithConnection to create backend actor with anonymous identity without requiring Internet Identity authentication; remove identity and admin token parameter dependencies"
-        }
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "summary": "Remove ApprovalRequiredScreen component and all approval request functionality from the frontend",
-      "acceptanceCriteria": [
-        "ApprovalRequiredScreen is removed or never rendered",
-        "No approval request functionality exists",
-        "Users never see approval pending messages"
+        "ApprovalRequiredScreen shows waiting message for unapproved users",
+        "Screen provides option to request approval",
+        "Screen provides sign-out option",
+        "Screen auto-refreshes approval status periodically"
       ],
       "file_operations": [
         {
           "path": "frontend/src/components/common/ApprovalRequiredScreen.tsx",
           "operation": "modify",
-          "description": "Disable ApprovalRequiredScreen by making it render null or an empty fragment so it never displays approval request UI"
+          "description": "Restore full ApprovalRequiredScreen component implementation. Display centered screen informing user that approval is pending. Show user's principal ID and provide request approval button using useApprovalStatus hook's requestApproval mutation. Include sign-out button using useInternetIdentity hook's clear function. Implement periodic approval status checking using React Query's refetchInterval to automatically detect when approval is granted."
         }
       ]
     },
     {
-      "id": "REQ-9",
-      "summary": "Remove useBootstrapAdmin hook and all admin bootstrapping logic from the frontend",
+      "id": "REQ-6",
+      "summary": "Restore SignInRequiredDialog component to prompt users to authenticate before performing restricted actions",
       "acceptanceCriteria": [
-        "useBootstrapAdmin hook is removed or unused",
-        "No admin bootstrapping occurs on admin domains",
-        "Admin token handling is removed"
+        "Dialog appears when unauthenticated user attempts mutation operation",
+        "Dialog provides Internet Identity login option",
+        "Dialog includes cancel option to dismiss"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/common/SignInRequiredDialog.tsx",
+          "operation": "modify",
+          "description": "Restore full SignInRequiredDialog component implementation. Create modal dialog with open/onOpenChange props for parent control. Display message explaining authentication is required. Include Internet Identity login button using useInternetIdentity hook. Provide cancel button to close dialog. Use shadcn/ui Dialog components for consistent styling."
+        }
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "summary": "Restore useApprovalStatus hook to check user approval and admin status with backend",
+      "acceptanceCriteria": [
+        "Hook queries backend for current user's approval status",
+        "Hook returns isApproved and isAdmin boolean flags",
+        "Hook includes mutation for requesting approval",
+        "Hook refetches status periodically for pending users"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useApprovalStatus.ts",
+          "operation": "modify",
+          "description": "Restore full useApprovalStatus hook implementation. Use useActor hook to access backend actor. Implement useQuery to call backend isCallerApproved method, returning isApproved boolean. Implement separate useQuery to call isCallerAdmin method, returning isAdmin boolean. Add useMutation for requestApproval backend method. Configure queries to refetch periodically (e.g., every 5 seconds) when user is authenticated but not approved. Disable queries when actor is not available. Export hook returning { isApproved, isAdmin, isLoading, requestApproval mutation }."
+        }
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "summary": "Restore useBootstrapAdmin hook to enable automatic admin bootstrapping for first admin domain user",
+      "acceptanceCriteria": [
+        "Hook provides mutation to bootstrap current user as admin",
+        "Hook calls backend bootstrapAdmin method",
+        "Hook invalidates approval-related queries after successful bootstrap"
       ],
       "file_operations": [
         {
           "path": "frontend/src/hooks/useBootstrapAdmin.ts",
           "operation": "modify",
-          "description": "Modify useBootstrapAdmin to return a no-op mutation that does nothing; disable all admin bootstrapping logic"
+          "description": "Restore full useBootstrapAdmin hook implementation. Use useActor hook to access backend actor. Implement useMutation to call backend bootstrapAdmin method (note: this method may be named initialize or similar based on the authorization component). Use useQueryClient to invalidate approval status queries after successful bootstrap. Export hook returning mutation object with mutate function and loading/error states."
+        }
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "summary": "Restore useStaffRestrictions hook to enforce staff mode restrictions on bulk upload and delete operations based on app mode and admin status",
+      "acceptanceCriteria": [
+        "Hook returns canBulkUpload flag (false for staff mode unless admin)",
+        "Hook returns canDelete flag (false for staff mode unless admin)",
+        "Hook uses useAppMode and approval status to determine permissions"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useStaffRestrictions.ts",
+          "operation": "modify",
+          "description": "Restore full useStaffRestrictions hook implementation. Use useAppMode hook to detect staff mode (presence of '-x18' in hostname). Use useApprovalStatus hook to check if user is admin. Return { canBulkUpload: !isStaffMode || isAdmin, canDelete: !isStaffMode || isAdmin, isStaffMode }. Export hook for use in dialogs and pages that perform bulk operations or deletions."
+        }
+      ]
+    },
+    {
+      "id": "REQ-10",
+      "summary": "Restore AccessManagementPage as admin-only page for viewing and managing user approval requests",
+      "acceptanceCriteria": [
+        "Page displays list of pending approval requests",
+        "Page displays list of approved users",
+        "Admin can approve or reject pending requests",
+        "Page is only accessible to admin users"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AccessManagementPage.tsx",
+          "operation": "modify",
+          "description": "Restore full AccessManagementPage component implementation. Use useApprovalStatus hook to check if current user is admin. If not admin, display access denied message. Use useAccessManagement hook to fetch listApprovals query. Display table or cards showing all users with their principal IDs and approval statuses (pending/approved/rejected). For pending users, provide approve and reject buttons using setApproval mutation. Include user role display and role assignment functionality using assignCallerUserRole mutation. Add loading and error states."
         },
         {
-          "path": "frontend/src/components/common/AuthApprovalGate.tsx",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Remove useBootstrapAdmin hook call and admin bootstrapping logic from AuthApprovalGate to prevent admin initialization attempts"
+          "description": "Add route for AccessManagementPage in the router configuration. Register route path '/access-management' or similar, ensuring it is included in the main navigation or accessible to admin users."
+        },
+        {
+          "path": "frontend/src/components/layout/AppLayout.tsx",
+          "operation": "modify",
+          "description": "Add 'Access Management' navigation link in the header for admin users. Use useApprovalStatus hook to check isAdmin and conditionally render the navigation item. Link should navigate to the AccessManagementPage route."
+        }
+      ]
+    },
+    {
+      "id": "REQ-11",
+      "summary": "Re-enable authentication and approval checks in all mutation operations across frontend dialogs",
+      "acceptanceCriteria": [
+        "All create/edit/delete dialogs check useMutationGate for actor readiness and authentication",
+        "Dialogs show SignInRequiredDialog when mutations are blocked due to missing authentication",
+        "Mutation buttons are disabled when user lacks required permissions"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useMutationGate.ts",
+          "operation": "modify",
+          "description": "Restore full useMutationGate hook implementation to enforce authentication checks. Use useActor hook to check actor availability. Use useInternetIdentity hook to check authentication status. Return { canMutate: !!actor && !!identity, isAuthenticated: !!identity, actorReady: !!actor, blockingReason } where blockingReason explains why mutations are blocked (e.g., 'Not authenticated', 'Backend not connected'). Export hook for use in all mutation dialogs."
+        },
+        {
+          "path": "frontend/src/components/inventory/InventoryFormDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook to check authentication before enabling form submission. Show SignInRequiredDialog when canMutate is false due to authentication. Disable submit button when mutations are blocked. Display inline message explaining why submission is disabled when applicable."
+        },
+        {
+          "path": "frontend/src/components/challans/ChallanFormDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook to check authentication before enabling challan creation. Show SignInRequiredDialog when user is not authenticated and attempts to submit. Disable create button based on canMutate flag. Add local state to control SignInRequiredDialog visibility."
+        },
+        {
+          "path": "frontend/src/components/challans/ChallanEditDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook to check authentication before enabling challan updates. Show SignInRequiredDialog when mutations are blocked. Disable save button when canMutate is false. Include authentication check in dialog open logic."
+        },
+        {
+          "path": "frontend/src/components/payments/PaymentFormDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook to check authentication before enabling payment creation. Show SignInRequiredDialog component when user attempts mutation without authentication. Disable submit button based on canMutate status."
+        },
+        {
+          "path": "frontend/src/components/petty-cash/PettyCashFormDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook to check authentication before enabling petty cash record creation or updates. Show SignInRequiredDialog when mutations are blocked due to missing authentication. Disable form submission based on canMutate flag."
+        },
+        {
+          "path": "frontend/src/components/challans/ChallanBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook and useStaffRestrictions hook to enforce authentication and staff restrictions for bulk uploads. Disable upload button when canMutate is false or canBulkUpload is false. Show SignInRequiredDialog when authentication is required. Display staff restriction message when applicable."
+        },
+        {
+          "path": "frontend/src/components/challans/ChallanNewFormatBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook and useStaffRestrictions hook. Enforce authentication checks and staff mode restrictions for new format bulk uploads. Show SignInRequiredDialog when needed. Disable upload functionality based on permission checks."
+        },
+        {
+          "path": "frontend/src/components/challans/ChallanRestoreDatesDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook and useStaffRestrictions hook to enforce authentication and staff restrictions for date restoration. Show SignInRequiredDialog when mutations require authentication. Disable restore functionality when permissions are insufficient."
+        },
+        {
+          "path": "frontend/src/components/clients/ClientBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook and useStaffRestrictions hook to enforce authentication and staff restrictions for client bulk uploads. Show SignInRequiredDialog when needed. Disable bulk upload based on canMutate and canBulkUpload flags."
+        },
+        {
+          "path": "frontend/src/components/inventory/InventoryBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook and useStaffRestrictions hook to enforce authentication and staff restrictions for inventory bulk uploads. Show SignInRequiredDialog when mutations are blocked. Disable upload based on permission checks."
+        },
+        {
+          "path": "frontend/src/components/payments/PaymentBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook and useStaffRestrictions hook to enforce authentication and staff restrictions for payment bulk uploads. Show SignInRequiredDialog when authentication is missing. Disable bulk upload functionality when canMutate or canBulkUpload is false."
+        },
+        {
+          "path": "frontend/src/components/petty-cash/PettyCashBulkUploadDialog.tsx",
+          "operation": "modify",
+          "description": "Integrate useMutationGate hook and useStaffRestrictions hook to enforce authentication and staff restrictions for petty cash bulk uploads. Show SignInRequiredDialog when needed. Disable upload based on permission checks."
+        }
+      ]
+    },
+    {
+      "id": "REQ-13",
+      "summary": "Remove all features, functions, formulas, and UI changes that were added or modified between version 71 and version 77, preserving only version 71 functionality (frontend changes only)",
+      "acceptanceCriteria": [
+        "Application functionality matches version 71 exactly",
+        "No version 77 features remain in the frontend codebase",
+        "All authentication and access control logic from v71 is restored"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ChallansPage.tsx",
+          "operation": "modify",
+          "description": "Review ChallansPage and remove any features added after version 71. Ensure authentication checks are enforced using AuthApprovalGate wrapper. Restore staff restriction checks for bulk operations. Verify that all mutation actions require authentication and approval."
+        },
+        {
+          "path": "frontend/src/pages/InventoryPage.tsx",
+          "operation": "modify",
+          "description": "Review InventoryPage and remove any features added after version 71. Ensure authentication checks are enforced. Restore staff restriction checks for bulk uploads and delete operations. Verify page matches version 71 functionality."
+        },
+        {
+          "path": "frontend/src/pages/PaymentsPage.tsx",
+          "operation": "modify",
+          "description": "Review PaymentsPage and remove any features added after version 71. Ensure authentication checks are enforced. Restore staff restriction checks for bulk operations. Verify page matches version 71 functionality."
+        },
+        {
+          "path": "frontend/src/pages/PettyCashPage.tsx",
+          "operation": "modify",
+          "description": "Review PettyCashPage and remove any features added after version 71. Ensure authentication checks are enforced. Restore staff restriction checks for bulk uploads. Verify page matches version 71 functionality."
+        },
+        {
+          "path": "frontend/src/pages/DashboardPage.tsx",
+          "operation": "modify",
+          "description": "Review DashboardPage and remove any features or metrics added after version 71. Ensure authentication checks are enforced via AuthApprovalGate. Verify dashboard content matches version 71 exactly."
+        },
+        {
+          "path": "frontend/src/pages/ReportsPage.tsx",
+          "operation": "modify",
+          "description": "Review ReportsPage and remove any features added after version 71. Ensure authentication checks are enforced. Verify report generation and filtering matches version 71 functionality."
+        },
+        {
+          "path": "frontend/src/pages/ClientBalancesPage.tsx",
+          "operation": "modify",
+          "description": "Review ClientBalancesPage and remove any features added after version 71. Ensure authentication checks are enforced via AuthApprovalGate. Verify client balance calculations match version 71."
         }
       ]
     }

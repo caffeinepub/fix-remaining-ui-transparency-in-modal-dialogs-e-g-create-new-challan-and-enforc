@@ -1,209 +1,263 @@
 {
   "kind": "build_request",
-  "title": "Remove all authentication logic and make application fully public",
-  "projectName": "RENTIQ Udaipur",
+  "title": "Restore Version 71 with Internet Identity Authentication and Access Controls",
+  "projectName": "Rentiq Udaipur",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Remove all Internet Identity authentication logic from the frontend including SignInScreen, SignInRequiredDialog, and all authentication-related components",
-      "target": "frontend",
+      "text": "Remove backend/migration.mo file entirely from the project",
+      "target": "backend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "Yes",
-          "Fix and build again"
+          "Remove this migration module entirely"
         ]
       },
       "acceptanceCriteria": [
-        "SignInScreen component is removed or disabled",
-        "SignInRequiredDialog component is removed or disabled",
-        "No authentication prompts appear when accessing the application",
-        "Application loads directly to the dashboard without login"
+        "backend/migration.mo file does not exist in the project",
+        "No migration logic is applied during canister upgrades"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Remove AuthApprovalGate component or modify it to always render children without checking authentication or approval status",
-      "target": "frontend",
+      "text": "Restore Internet Identity authentication with admin bootstrapping mechanism in backend/main.mo, exactly as implemented in version 71",
+      "target": "backend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "Yes",
-          "remove the logic of admin and users login"
+          "Full Draft Version 71 with all data behavior and everything firstly deployed in version 71"
         ]
       },
       "acceptanceCriteria": [
-        "AuthApprovalGate no longer blocks access based on authentication",
-        "Application renders main content immediately without authentication checks",
-        "No approval screens or gates are shown to users"
+        "Backend implements Internet Identity principal-based authentication",
+        "First user from admin domain is automatically bootstrapped as admin",
+        "All other users require explicit approval to access the system",
+        "Access control checks are enforced on all mutation operations"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Remove useInternetIdentity hook dependencies and replace all authentication state checks with default authenticated state throughout the application",
+      "text": "Re-enable AuthApprovalGate component in frontend/src/components/common/AuthApprovalGate.tsx to block unauthenticated and unapproved users from accessing application routes",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "remove the logic of admin and users login"
+          "Full Draft Version 71 with all data behavior and everything firstly deployed in version 71"
         ]
       },
       "acceptanceCriteria": [
-        "useInternetIdentity hook is no longer used in components",
-        "All isAuthenticated checks are removed or hardcoded to true",
-        "No authentication-related context providers wrap the application"
+        "AuthApprovalGate checks Internet Identity authentication status",
+        "Unauthenticated users are redirected to sign-in screen",
+        "Authenticated but unapproved users see approval required screen",
+        "Admin users from admin domains are auto-bootstrapped on first login"
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Remove admin role checks, staff restrictions, and approval status checks from all components and hooks including useStaffRestrictions, useAppMode, and useApprovalStatus",
+      "text": "Restore SignInScreen component in frontend/src/components/common/SignInScreen.tsx to provide Internet Identity login interface",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "remove the logic of admin and users login"
+          "Full Draft Version 71 with all data behavior and everything firstly deployed in version 71"
         ]
       },
       "acceptanceCriteria": [
-        "All users can access bulk upload functionality",
-        "All users can perform delete operations",
-        "Admin-only routes and features are accessible to everyone",
-        "Access Management page is removed or accessible to all"
+        "SignInScreen displays Internet Identity login button",
+        "Clicking login triggers Internet Identity authentication flow",
+        "After successful login, user is redirected to appropriate screen based on approval status"
       ]
     },
     {
       "id": "REQ-5",
-      "text": "Remove access control, user approval, and authentication mixins from backend/main.mo and disable all authentication checks in backend endpoints",
-      "target": "backend",
+      "text": "Restore ApprovalRequiredScreen component in frontend/src/components/common/ApprovalRequiredScreen.tsx to display pending approval status for logged-in but unapproved users",
+      "target": "frontend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "remove the logic of admin and users login"
+          "Full Draft Version 71 with all data behavior and everything firstly deployed in version 71"
         ]
       },
       "acceptanceCriteria": [
-        "Backend endpoints no longer require authentication",
-        "User approval system is removed from backend",
-        "Admin bootstrapping logic is removed",
-        "All backend methods are publicly accessible"
+        "ApprovalRequiredScreen shows waiting message for unapproved users",
+        "Screen provides option to request approval",
+        "Screen provides sign-out option",
+        "Screen auto-refreshes approval status periodically"
       ]
     },
     {
       "id": "REQ-6",
-      "text": "Remove useMutationGate hook or modify it to always return mutations as ready without checking authentication state",
+      "text": "Restore SignInRequiredDialog component in frontend/src/components/common/SignInRequiredDialog.tsx to prompt users to authenticate before performing restricted actions",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "remove the logic of admin and users login"
+          "Full Draft Version 71 with all data behavior and everything firstly deployed in version 71"
         ]
       },
       "acceptanceCriteria": [
-        "All mutations are immediately available without authentication checks",
-        "useMutationGate no longer blocks mutations based on auth state",
-        "Components can perform mutations without authentication"
+        "Dialog appears when unauthenticated user attempts mutation operation",
+        "Dialog provides Internet Identity login option",
+        "Dialog includes cancel option to dismiss"
       ]
     },
     {
       "id": "REQ-7",
-      "text": "Modify useActor hook to create backend actor instances without requiring Internet Identity authentication or admin token parameters",
+      "text": "Restore useApprovalStatus hook in frontend/src/hooks/useApprovalStatus.ts to check user approval and admin status with backend",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "remove the logic of admin and users login"
+          "Full Draft Version 71 with all data behavior and everything firstly deployed in version 71"
         ]
       },
       "acceptanceCriteria": [
-        "useActor hook creates actor without identity parameter",
-        "Admin token URL parameter is no longer used",
-        "Backend actor connects using anonymous identity or no authentication"
+        "Hook queries backend for current user's approval status",
+        "Hook returns isApproved and isAdmin boolean flags",
+        "Hook includes mutation for requesting approval",
+        "Hook refetches status periodically for pending users"
       ]
     },
     {
       "id": "REQ-8",
-      "text": "Remove ApprovalRequiredScreen component and all approval request functionality from the frontend",
+      "text": "Restore useBootstrapAdmin hook in frontend/src/hooks/useBootstrapAdmin.ts to enable automatic admin bootstrapping for first admin domain user",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "remove the logic of admin and users login"
+          "Full Draft Version 71 with all data behavior and everything firstly deployed in version 71"
         ]
       },
       "acceptanceCriteria": [
-        "ApprovalRequiredScreen is removed or never rendered",
-        "No approval request functionality exists",
-        "Users never see approval pending messages"
+        "Hook provides mutation to bootstrap current user as admin",
+        "Hook calls backend bootstrapAdmin method",
+        "Hook invalidates approval-related queries after successful bootstrap"
       ]
     },
     {
       "id": "REQ-9",
-      "text": "Remove useBootstrapAdmin hook and all admin bootstrapping logic from the frontend",
+      "text": "Restore useStaffRestrictions hook in frontend/src/hooks/useStaffRestrictions.ts to enforce staff mode restrictions on bulk upload and delete operations based on app mode and admin status",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "remove the logic of admin and users login"
+          "Full Draft Version 71 with all data behavior and everything firstly deployed in version 71"
         ]
       },
       "acceptanceCriteria": [
-        "useBootstrapAdmin hook is removed or unused",
-        "No admin bootstrapping occurs on admin domains",
-        "Admin token handling is removed"
+        "Hook returns canBulkUpload flag (false for staff mode unless admin)",
+        "Hook returns canDelete flag (false for staff mode unless admin)",
+        "Hook uses useAppMode and approval status to determine permissions"
       ]
     },
     {
       "id": "REQ-10",
-      "text": "Remove UserProfile data type and all user management endpoints from backend/main.mo including approval, profile, and admin check methods",
+      "text": "Restore AccessManagementPage in frontend/src/pages/AccessManagementPage.tsx as admin-only page for viewing and managing user approval requests",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Full Draft Version 71 with all data behavior and everything firstly deployed in version 71"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Page displays list of pending approval requests",
+        "Page displays list of approved users",
+        "Admin can approve or reject pending requests",
+        "Page is only accessible to admin users"
+      ]
+    },
+    {
+      "id": "REQ-11",
+      "text": "Re-enable authentication and approval checks in all mutation operations across frontend dialogs (ChallanFormDialog, ChallanEditDialog, InventoryFormDialog, PaymentFormDialog, PettyCashFormDialog, ClientBulkUploadDialog, etc.)",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Full Draft Version 71 with all data behavior and everything firstly deployed in version 71"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All create/edit/delete dialogs check useMutationGate for actor readiness and authentication",
+        "Dialogs show SignInRequiredDialog when mutations are blocked due to missing authentication",
+        "Mutation buttons are disabled when user lacks required permissions"
+      ]
+    },
+    {
+      "id": "REQ-12",
+      "text": "Update backend canister ID reference from c05156bde8c3af0dd27a09a2167b2c6b3b00177 to c05l66bde8c3af0dd27a09a2167b2c6b3b001177 as shown in screenshot",
       "target": "backend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "remove the logic of admin and users login"
+          "Remove this canister ID and find the canister id in the screenshot"
         ]
       },
       "acceptanceCriteria": [
-        "UserProfile type is removed from backend",
-        "User approval endpoints no longer exist",
-        "Admin check methods are removed",
-        "User-related storage maps are removed"
+        "All backend canister ID references use c05l66bde8c3af0dd27a09a2167b2c6b3b001177",
+        "Frontend actor initialization connects to correct canister ID",
+        "Build and deployment configuration uses correct canister ID"
+      ]
+    },
+    {
+      "id": "REQ-13",
+      "text": "Remove all features, functions, formulas, and UI changes that were added or modified between version 71 and version 77, preserving only version 71 functionality",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "remove everything or every function and prompt i had requested you or you suggested to me in every version",
+          "Remove each and every thing made in this app after version 71 deployment"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Application functionality matches version 71 exactly",
+        "No version 77 features remain in the codebase",
+        "All authentication and access control logic from v71 is restored",
+        "Data models and API methods match version 71 structure"
       ]
     }
   ],
   "constraints": [
-    "Do not modify frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useActor.ts files directly - they are in immutablePaths",
-    "Maintain single-actor architecture in backend/main.mo",
-    "Do not introduce new authentication mechanisms while removing existing ones",
-    "Preserve all business logic for inventory, challans, payments, petty cash, and clients",
-    "Do not modify frontend/src/components/ui directory components"
+    "Preserve all existing data created in version 77 - do not clear or migrate data",
+    "Backend must use single-actor architecture with all logic in backend/main.mo",
+    "Do not modify frontend/src/hooks/useInternetIdentity.ts or other immutable authentication infrastructure",
+    "Maintain compatibility with Internet Identity authentication system",
+    "Keep all existing inventory, challan, payment, petty cash, and client data intact"
   ],
   "nonGoals": [
-    "Fixing the existing backend connection errors shown in screenshots (connection failures are separate from authentication removal)",
-    "Adding new security mechanisms or access controls",
-    "Implementing role-based permissions",
-    "Adding user registration or profile management features",
-    "Modifying the deployment configuration or canister settings"
+    "Adding new features beyond version 71 functionality",
+    "Modifying or improving version 71 authentication logic",
+    "Creating new UI components not present in version 71",
+    "Implementing features from intermediate versions (72-76)",
+    "Changing the core data models or business logic from version 71"
   ],
   "imageRequirements": {
     "required": [],

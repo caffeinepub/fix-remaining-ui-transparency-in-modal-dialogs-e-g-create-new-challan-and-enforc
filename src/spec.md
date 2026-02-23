@@ -1,16 +1,16 @@
 # Specification
 
 ## Summary
-**Goal:** Remove all authentication and access control logic to make the RENTIQ Udaipur application fully public and accessible without login.
+**Goal:** Restore version 71 of RentIQ Udaipur with Internet Identity authentication, access controls, and admin bootstrapping, removing all changes made in versions 72-77.
 
 **Planned changes:**
-- Remove Internet Identity authentication components (SignInScreen, SignInRequiredDialog, useInternetIdentity)
-- Remove AuthApprovalGate and ApprovalRequiredScreen components to allow direct access
-- Remove admin role checks, staff restrictions, and approval status logic from all hooks and components
-- Modify useActor hook to create backend actor without authentication requirements
-- Remove authentication mixins, user approval system, and access control from backend/main.mo
-- Remove UserProfile data type and all user management endpoints from backend
-- Modify useMutationGate to allow all mutations without authentication checks
-- Remove useBootstrapAdmin hook and admin bootstrapping logic
+- Remove backend/migration.mo file entirely
+- Restore Internet Identity authentication with principal-based access control in backend/main.mo
+- Re-enable AuthApprovalGate, SignInScreen, ApprovalRequiredScreen, and SignInRequiredDialog components
+- Restore useApprovalStatus, useBootstrapAdmin, and useStaffRestrictions hooks
+- Restore AccessManagementPage for admin user management
+- Re-enable authentication and approval checks in all mutation dialogs (ChallanFormDialog, ChallanEditDialog, InventoryFormDialog, PaymentFormDialog, PettyCashFormDialog, ClientBulkUploadDialog, etc.)
+- Update backend canister ID from c05156bde8c3af0dd27a09a2167b2c6b3b00177 to c05l66bde8c3af0dd27a09a2167b2c6b3b001177
+- Remove all features, functions, formulas, and UI changes added between version 71 and version 77
 
-**User-visible outcome:** Users can access the RENTIQ Udaipur application immediately without any login or authentication, with full access to all features including inventory management, challans, payments, petty cash, and client management.
+**User-visible outcome:** Users must authenticate with Internet Identity to access the application. The first user from the admin domain is automatically bootstrapped as admin. All other users must wait for admin approval before accessing the system. Admins can manage user access through the Access Management page and have full permissions, while staff users have restricted permissions for bulk operations and deletions. All data from version 77 is preserved.

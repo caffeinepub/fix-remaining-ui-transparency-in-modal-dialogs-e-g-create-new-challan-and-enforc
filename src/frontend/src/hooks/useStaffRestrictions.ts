@@ -1,11 +1,20 @@
+import { useAppMode } from './useAppMode';
+import { useIsCallerAdmin } from './useApprovalStatus';
+
 /**
- * Hook that always allows all operations (no restrictions).
+ * Hook that returns staff mode restrictions based on app mode and admin status.
  */
 export function useStaffRestrictions() {
+  const { isStaffMode } = useAppMode();
+  const { data: isAdmin, isLoading } = useIsCallerAdmin();
+
+  const canBulkUpload = !isStaffMode || (isAdmin ?? false);
+  const canDelete = !isStaffMode || (isAdmin ?? false);
+
   return {
-    canBulkUpload: true,
-    canDelete: true,
-    disabledReason: undefined,
-    isLoading: false,
+    canBulkUpload,
+    canDelete,
+    disabledReason: isStaffMode && !isAdmin ? 'Staff mode: Only admins can perform this action' : undefined,
+    isLoading,
   };
 }

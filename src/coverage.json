@@ -1,167 +1,187 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-22T18:42:27.413Z",
+  "generatedAt": "2026-02-23T10:34:06.000Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 10,
-    "implemented": 8,
+    "total": 13,
+    "implemented": 9,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Remove all Internet Identity authentication logic from the frontend including SignInScreen, SignInRequiredDialog, and all authentication-related components",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/common/SignInScreen.tsx",
-          "frontend/src/components/common/SignInRequiredDialog.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/common/SignInScreen.tsx",
-          "frontend/src/components/common/SignInRequiredDialog.tsx"
-        ]
+        "summary": "Remove backend/migration.mo file entirely from the project",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-10",
-        "summary": "Remove UserProfile data type and all user management endpoints from backend/main.mo including approval, profile, and admin check methods",
+        "summary": "Restore AccessManagementPage in frontend/src/pages/AccessManagementPage.tsx as admin-only page for viewing and managing user approval requests",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/AccessManagementPage.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/components/layout/AppLayout.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/AccessManagementPage.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/components/layout/AppLayout.tsx"
+        ]
+      },
+      {
+        "id": "REQ-11",
+        "summary": "Re-enable authentication and approval checks in all mutation operations across frontend dialogs (ChallanFormDialog, ChallanEditDialog, InventoryFormDialog, PaymentFormDialog, PettyCashFormDialog, ClientBulkUploadDialog, etc.)",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useMutationGate.ts",
+          "frontend/src/components/inventory/InventoryFormDialog.tsx",
+          "frontend/src/components/challans/ChallanFormDialog.tsx",
+          "frontend/src/components/challans/ChallanEditDialog.tsx",
+          "frontend/src/components/payments/PaymentFormDialog.tsx",
+          "frontend/src/components/petty-cash/PettyCashFormDialog.tsx",
+          "frontend/src/components/challans/ChallanBulkUploadDialog.tsx",
+          "frontend/src/components/challans/ChallanNewFormatBulkUploadDialog.tsx",
+          "frontend/src/components/challans/ChallanRestoreDatesDialog.tsx",
+          "frontend/src/components/clients/ClientBulkUploadDialog.tsx",
+          "frontend/src/components/inventory/InventoryBulkUploadDialog.tsx",
+          "frontend/src/components/payments/PaymentBulkUploadDialog.tsx",
+          "frontend/src/components/petty-cash/PettyCashBulkUploadDialog.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useMutationGate.ts"
+        ]
+      },
+      {
+        "id": "REQ-12",
+        "summary": "Update backend canister ID reference from c05156bde8c3af0dd27a09a2167b2c6b3b00177 to c05l66bde8c3af0dd27a09a2167b2c6b3b001177 as shown in screenshot",
         "status": "unknown",
         "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-13",
+        "summary": "Remove all features, functions, formulas, and UI changes that were added or modified between version 71 and version 77, preserving only version 71 functionality",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/pages/ChallansPage.tsx",
+          "frontend/src/pages/InventoryPage.tsx",
+          "frontend/src/pages/PaymentsPage.tsx",
+          "frontend/src/pages/PettyCashPage.tsx",
+          "frontend/src/pages/DashboardPage.tsx",
+          "frontend/src/pages/ReportsPage.tsx",
+          "frontend/src/pages/ClientBalancesPage.tsx"
+        ],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Remove AuthApprovalGate component or modify it to always render children without checking authentication or approval status",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/common/AuthApprovalGate.tsx",
-          "frontend/src/App.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/common/AuthApprovalGate.tsx",
-          "frontend/src/App.tsx"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Remove useInternetIdentity hook dependencies and replace all authentication state checks with default authenticated state throughout the application",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/main.tsx",
-          "frontend/src/components/layout/AppLayout.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/layout/AppLayout.tsx"
-        ]
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Remove admin role checks, staff restrictions, and approval status checks from all components and hooks including useStaffRestrictions, useAppMode, and useApprovalStatus",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useStaffRestrictions.ts",
-          "frontend/src/hooks/useApprovalStatus.ts",
-          "frontend/src/components/challans/ChallanBulkUploadDialog.tsx",
-          "frontend/src/components/inventory/InventoryBulkUploadDialog.tsx",
-          "frontend/src/components/payments/PaymentBulkUploadDialog.tsx",
-          "frontend/src/components/petty-cash/PettyCashBulkUploadDialog.tsx",
-          "frontend/src/components/clients/ClientBulkUploadDialog.tsx",
-          "frontend/src/components/challans/ChallanNewFormatBulkUploadDialog.tsx",
-          "frontend/src/components/challans/ChallanRestoreDatesDialog.tsx",
-          "frontend/src/pages/ChallansPage.tsx",
-          "frontend/src/pages/InventoryPage.tsx",
-          "frontend/src/pages/AccessManagementPage.tsx",
-          "frontend/src/components/layout/AppLayout.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useStaffRestrictions.ts",
-          "frontend/src/hooks/useApprovalStatus.ts",
-          "frontend/src/pages/InventoryPage.tsx",
-          "frontend/src/pages/AccessManagementPage.tsx",
-          "frontend/src/components/layout/AppLayout.tsx"
-        ]
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Remove access control, user approval, and authentication mixins from backend/main.mo and disable all authentication checks in backend endpoints",
+        "summary": "Restore Internet Identity authentication with admin bootstrapping mechanism in backend/main.mo, exactly as implemented in version 71",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-6",
-        "summary": "Remove useMutationGate hook or modify it to always return mutations as ready without checking authentication state",
+        "id": "REQ-3",
+        "summary": "Re-enable AuthApprovalGate component in frontend/src/components/common/AuthApprovalGate.tsx to block unauthenticated and unapproved users from accessing application routes",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useMutationGate.ts"
+          "frontend/src/components/common/AuthApprovalGate.tsx",
+          "frontend/src/App.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useMutationGate.ts"
+          "frontend/src/components/common/AuthApprovalGate.tsx",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Restore SignInScreen component in frontend/src/components/common/SignInScreen.tsx to provide Internet Identity login interface",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/common/SignInScreen.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/common/SignInScreen.tsx"
+        ]
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Restore ApprovalRequiredScreen component in frontend/src/components/common/ApprovalRequiredScreen.tsx to display pending approval status for logged-in but unapproved users",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/common/ApprovalRequiredScreen.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/common/ApprovalRequiredScreen.tsx"
+        ]
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Restore SignInRequiredDialog component in frontend/src/components/common/SignInRequiredDialog.tsx to prompt users to authenticate before performing restricted actions",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/common/SignInRequiredDialog.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/common/SignInRequiredDialog.tsx"
         ]
       },
       {
         "id": "REQ-7",
-        "summary": "Modify useActor hook to create backend actor instances without requiring Internet Identity authentication or admin token parameters",
+        "summary": "Restore useApprovalStatus hook in frontend/src/hooks/useApprovalStatus.ts to check user approval and admin status with backend",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useActorWithConnection.ts"
+          "frontend/src/hooks/useApprovalStatus.ts"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useActorWithConnection.ts"
+          "frontend/src/hooks/useApprovalStatus.ts"
         ]
       },
       {
         "id": "REQ-8",
-        "summary": "Remove ApprovalRequiredScreen component and all approval request functionality from the frontend",
+        "summary": "Restore useBootstrapAdmin hook in frontend/src/hooks/useBootstrapAdmin.ts to enable automatic admin bootstrapping for first admin domain user",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/common/ApprovalRequiredScreen.tsx"
+          "frontend/src/hooks/useBootstrapAdmin.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/common/ApprovalRequiredScreen.tsx"
+          "frontend/src/hooks/useBootstrapAdmin.ts"
         ]
       },
       {
         "id": "REQ-9",
-        "summary": "Remove useBootstrapAdmin hook and all admin bootstrapping logic from the frontend",
+        "summary": "Restore useStaffRestrictions hook in frontend/src/hooks/useStaffRestrictions.ts to enforce staff mode restrictions on bulk upload and delete operations based on app mode and admin status",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useBootstrapAdmin.ts",
-          "frontend/src/components/common/AuthApprovalGate.tsx"
+          "frontend/src/hooks/useStaffRestrictions.ts"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useBootstrapAdmin.ts",
-          "frontend/src/components/common/AuthApprovalGate.tsx"
+          "frontend/src/hooks/useStaffRestrictions.ts"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
     "frontend/src/components/common/ApprovalRequiredScreen.tsx",
     "frontend/src/components/common/AuthApprovalGate.tsx",
     "frontend/src/components/common/SignInRequiredDialog.tsx",
     "frontend/src/components/common/SignInScreen.tsx",
     "frontend/src/components/layout/AppLayout.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useActorWithConnection.ts",
     "frontend/src/hooks/useApprovalStatus.ts",
     "frontend/src/hooks/useBootstrapAdmin.ts",
     "frontend/src/hooks/useMutationGate.ts",
-    "frontend/src/hooks/useQueries.ts",
     "frontend/src/hooks/useStaffRestrictions.ts",
     "frontend/src/pages/AccessManagementPage.tsx",
-    "frontend/src/pages/InventoryPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

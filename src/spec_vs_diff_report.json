@@ -1,46 +1,38 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-22T18:42:27.409Z",
-  "summary": "The diff shows extensive removal of authentication logic across frontend and backend. However, the backend (main.mo) still retains significant authentication-related code including access control mixins, user approval logic, and authentication-gated endpoints. Frontend changes appear complete with authentication components disabled/stubbed and hooks modified to bypass authentication. A migration module was added to handle state transitions.",
+  "generatedAt": "2026-02-23T10:34:05.996Z",
+  "summary": "The diff implements most authentication and access control restoration requirements from version 71. Core components like AuthApprovalGate, SignInScreen, ApprovalRequiredScreen, SignInRequiredDialog, and hooks (useApprovalStatus, useBootstrapAdmin, useStaffRestrictions) are restored. AccessManagementPage is added. Backend includes approval methods. However, several requirements lack clear evidence in the truncated diff, and canister ID verification is incomplete.",
   "missing_requirements": [
     {
-      "id": "REQ-5",
-      "requirement": "Remove access control, user approval, and authentication mixins from backend/main.mo and disable all authentication checks in backend endpoints",
-      "reason": "Backend main.mo still includes AccessControl and MixinAuthorization imports and initialization, includes UserApproval state and methods (isCallerApproved, requestApproval, setApproval, listApprovals), and retains authentication checks like 'if (not (AccessControl.hasPermission(accessControlState, caller, #admin)))' that trap unauthorized access",
-      "evidence": [
-        "backend/main.mo"
-      ]
+      "id": "REQ-1",
+      "requirement": "Remove backend/migration.mo file entirely from the project",
+      "reason": "Diff shows no deleted files section for backend/migration.mo. The requirement explicitly requires the file to not exist, but there is no evidence of deletion.",
+      "evidence": []
     },
     {
-      "id": "REQ-10",
-      "requirement": "Remove UserProfile data type and all user management endpoints from backend/main.mo including approval, profile, and admin check methods",
-      "reason": "Backend main.mo still contains approval-related methods (isCallerApproved, requestApproval, setApproval, listApprovals) that should be removed according to the requirement",
-      "evidence": [
-        "backend/main.mo"
-      ]
-    }
-  ],
-  "hallucinated_features": [
-    {
-      "description": "Migration module added to handle state transitions from old actor structure to new",
-      "reason": "Migration module (backend/migration.mo) was not requested in any requirement. The BuildRequest only asks for removal of authentication logic, not adding migration infrastructure",
-      "evidence": [
-        "backend/migration.mo"
-      ]
+      "id": "REQ-11",
+      "requirement": "Re-enable authentication and approval checks in all mutation operations across frontend dialogs",
+      "reason": "Diff does not include changes to dialog files mentioned in requirement (ChallanFormDialog, ChallanEditDialog, InventoryFormDialog, PaymentFormDialog, PettyCashFormDialog, ClientBulkUploadDialog). No evidence these dialogs check useMutationGate or show SignInRequiredDialog.",
+      "evidence": []
     },
     {
-      "description": "Access Management page implementation as a stub/disabled component",
-      "reason": "REQ-4 states 'Access Management page is removed or accessible to all' but the diff shows a new AccessManagementPage.tsx was created showing a disabled message. The requirement could be satisfied by removal (not creating a stub page) or making it accessible without restrictions",
-      "evidence": [
-        "frontend/src/pages/AccessManagementPage.tsx"
-      ]
+      "id": "REQ-12",
+      "requirement": "Update backend canister ID reference from c05156bde8c3af0dd27a09a2167b2c6b3b00177 to c05l66bde8c3af0dd27a09a2167b2c6b3b001177",
+      "reason": "Diff does not show changes to any configuration files, deployment configs, or actor initialization code that would contain canister ID references. Cannot verify canister ID update.",
+      "evidence": []
+    },
+    {
+      "id": "REQ-13",
+      "requirement": "Remove all features, functions, formulas, and UI changes that were added or modified between version 71 and version 77",
+      "reason": "Diff is truncated and does not provide comprehensive evidence of feature removal. Cannot verify that v72-v77 features have been removed without seeing all file changes and deletions.",
+      "evidence": []
     }
   ],
-  "confidence": 0.85,
+  "hallucinated_features": [],
+  "confidence": 0.65,
   "changed_files": [
     "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
     "frontend/src/App.tsx",
     "frontend/src/components/common/ApprovalRequiredScreen.tsx",
@@ -48,14 +40,11 @@
     "frontend/src/components/common/SignInRequiredDialog.tsx",
     "frontend/src/components/common/SignInScreen.tsx",
     "frontend/src/components/layout/AppLayout.tsx",
-    "frontend/src/hooks/useActorWithConnection.ts",
     "frontend/src/hooks/useApprovalStatus.ts",
     "frontend/src/hooks/useBootstrapAdmin.ts",
     "frontend/src/hooks/useMutationGate.ts",
-    "frontend/src/hooks/useQueries.ts",
     "frontend/src/hooks/useStaffRestrictions.ts",
     "frontend/src/pages/AccessManagementPage.tsx",
-    "frontend/src/pages/InventoryPage.tsx",
     "project_state.json"
   ]
 }
