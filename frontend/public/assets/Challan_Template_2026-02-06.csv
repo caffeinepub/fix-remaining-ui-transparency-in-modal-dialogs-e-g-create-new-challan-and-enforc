@@ -1,0 +1,3 @@
+Challan ID,Client Name,Venue,Freight,Start Date,End Date,Item Name,Quantity,Rate,Days
+CH001,Sample Client,Sample Venue,500,2026-02-01,2026-02-05,Sample Item 1,10,100,4
+CH001,Sample Client,Sample Venue,,2026-02-01,2026-02-05,Sample Item 2,5,150,4

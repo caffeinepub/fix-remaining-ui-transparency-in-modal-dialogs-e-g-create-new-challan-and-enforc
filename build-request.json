@@ -1,0 +1,105 @@
+{
+  "kind": "build_request",
+  "title": "Fix login flow: show Internet Identity login panel first, then connect backend after authentication",
+  "projectName": "RENTIQ",
+  "priority": "high",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Fix the app initialization flow so that the Internet Identity login screen (SignInScreen) is displayed immediately on app load, before any backend actor initialization or connection attempt. The backend actor must only be initialized after the user has successfully authenticated via Internet Identity.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1",
+          "msg-2"
+        ],
+        "quotes": [
+          "App stuck on black screen with 'Connecting to backend...' spinner — never reaches login panel",
+          "restore this working state with the login pannel"
+        ]
+      },
+      "acceptanceCriteria": [
+        "On app load, the Internet Identity login screen is shown immediately with no black screen or spinner",
+        "The 'Connecting to backend...' spinner is never shown to unauthenticated users",
+        "After successful Internet Identity login, the backend actor initializes and the main app loads",
+        "All 7 modules (Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, Reports) are accessible after login",
+        "The Build Info panel (ⓘ icon) shows Backend Actor: Ready and Authentication: Authenticated after login"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Ensure the BackendConnectionGate component only wraps authenticated users. Unauthenticated users must be routed directly to the SignInScreen and must never see the BackendConnectionGate loading state.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "Internet Identity login first — no more black screen / stuck loading",
+          "Backend/actor connects only after successful login"
+        ]
+      },
+      "acceptanceCriteria": [
+        "BackendConnectionGate is rendered only when the user is authenticated",
+        "Unauthenticated users see the SignInScreen directly without any loading spinner",
+        "The authentication check in App.tsx gates BackendConnectionGate behind identity availability"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Preserve the existing Build Info panel (BuildInfo component, ⓘ icon) that displays: Build Time, Commit Hash, Backend Actor status, Authentication status, Runtime Errors, and Quick Actions (health check, diagnostics copy). This panel must remain accessible from the main app layout after login.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "Build Time: 2/8/2026, 4:06:48 PM",
+          "Commit Hash: c05156bde8c3af0dd27a09a2167b2c6b3b00177",
+          "Backend Actor: Ready",
+          "Authentication: Authenticated"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The ⓘ Build Info panel is visible and accessible after login",
+        "The panel correctly shows Backend Actor status and Authentication status",
+        "Build Time and Commit Hash fields are displayed in the panel"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Preserve all 7 sidebar navigation modules exactly as they exist: Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, and Reports. RENTIQ branding must appear in the sidebar. No changes to module structure or functionality.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "All 7 modules: Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, Reports",
+          "RENTIQ branding in the sidebar"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Sidebar shows all 7 modules: Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, Reports",
+        "RENTIQ branding (logo/app name) is visible in the sidebar",
+        "All module pages load and function correctly after authentication"
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not modify any immutable frontend paths: useInternetIdentity.ts, useActor.ts, main.tsx, or components/ui",
+    "Do not change the Motoko backend schema or actor logic — this is a frontend-only fix",
+    "Preserve all existing module functionality (Inventory, Challans, Payments, Petty Cash, Client Balances, Reports, Dashboard)",
+    "Do not remove or restructure the BuildInfo component or its ⓘ trigger button"
+  ],
+  "nonGoals": [
+    "Adding new modules or features beyond restoring the working state",
+    "Changing the visual design or color theme",
+    "Modifying backend Motoko logic",
+    "Changing the authentication provider from Internet Identity"
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

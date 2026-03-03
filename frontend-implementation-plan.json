@@ -1,0 +1,78 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Fix login flow: show Internet Identity login panel first, then connect backend after authentication",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "summary": "Fix the app initialization flow so that the Internet Identity login screen (SignInScreen) is displayed immediately on app load, before any backend actor initialization or connection attempt",
+      "acceptanceCriteria": [
+        "On app load, the Internet Identity login screen is shown immediately with no black screen or spinner",
+        "The 'Connecting to backend...' spinner is never shown to unauthenticated users",
+        "After successful Internet Identity login, the backend actor initializes and the main app loads",
+        "All 7 modules (Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, Reports) are accessible after login",
+        "The Build Info panel (ⓘ icon) shows Backend Actor: Ready and Authentication: Authenticated after login"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Refactor the root App component to show SignInScreen immediately for unauthenticated users without attempting backend actor initialization. Move BackendConnectionGate inside the authentication check so it only initializes the actor after the user has successfully authenticated via Internet Identity. Ensure the component returns SignInScreen directly when !identity, and only wraps the main app with BackendConnectionGate + AuthApprovalGate when identity exists."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Ensure the BackendConnectionGate component only wraps authenticated users",
+      "acceptanceCriteria": [
+        "BackendConnectionGate is rendered only when the user is authenticated",
+        "Unauthenticated users see the SignInScreen directly without any loading spinner",
+        "The authentication check in App.tsx gates BackendConnectionGate behind identity availability"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/common/BackendConnectionGate.tsx",
+          "operation": "modify",
+          "description": "Review and verify that BackendConnectionGate correctly displays a 'Connecting to backend...' spinner only when actor initialization is in progress. Ensure the component does not attempt to render or initialize the actor unless it is already gated behind an authentication check in App.tsx. Add a comment confirming that this component must never be rendered for unauthenticated users."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Preserve the existing Build Info panel (BuildInfo component, ⓘ icon) that displays: Build Time, Commit Hash, Backend Actor status, Authentication status, Runtime Errors, and Quick Actions",
+      "acceptanceCriteria": [
+        "The ⓘ Build Info panel is visible and accessible after login",
+        "The panel correctly shows Backend Actor status and Authentication status",
+        "Build Time and Commit Hash fields are displayed in the panel"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/common/BuildInfo.tsx",
+          "operation": "modify",
+          "description": "Verify that the BuildInfo component correctly reads and displays Backend Actor status, Authentication status, Build Time, and Commit Hash. Ensure the component is accessible from the main app layout (AppLayout) after the user logs in. No structural changes are required unless the component is not currently wired into AppLayout."
+        },
+        {
+          "path": "frontend/src/components/layout/AppLayout.tsx",
+          "operation": "modify",
+          "description": "Verify that AppLayout renders the BuildInfo component trigger (ⓘ icon) in a visible location (e.g., header or sidebar). If the BuildInfo trigger is missing or not properly wired, add it to the layout. Ensure the BuildInfo panel is accessible after login."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Preserve all 7 sidebar navigation modules exactly as they exist: Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, and Reports. RENTIQ branding must appear in the sidebar.",
+      "acceptanceCriteria": [
+        "Sidebar shows all 7 modules: Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, Reports",
+        "RENTIQ branding (logo/app name) is visible in the sidebar",
+        "All module pages load and function correctly after authentication"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/layout/AppLayout.tsx",
+          "operation": "modify",
+          "description": "Verify that AppLayout renders the sidebar with all 7 navigation links (Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, Reports) and displays RENTIQ branding (logo/app name). Ensure no navigation links are removed or restructured. If any links are missing, restore them. Confirm that the sidebar is only shown after the user is authenticated and approved."
+        }
+      ]
+    }
+  ]
+}

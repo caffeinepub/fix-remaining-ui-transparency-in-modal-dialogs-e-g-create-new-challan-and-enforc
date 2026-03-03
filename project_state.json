@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "RENTIQ - A rental/inventory management app on Internet Computer (ICP) with Internet Identity authentication. App has 7 modules: Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, Reports. Features a Build Info panel (ⓘ icon) showing backend status. Currently fixing login flow to show Internet Identity login panel first, then connect backend/actor after authentication.",
+  "architectural_notes": [
+    "Login flow: Internet Identity authentication must complete first, then backend/actor connection is initialized after successful login",
+    "Build Info panel (ⓘ icon) shows: Backend Actor status, Authentication status, Canister ID, Commit Hash, Runtime Errors, Quick Actions",
+    "7 sidebar modules: Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, Reports"
+  ],
+  "known_issues": [
+    "App stuck on black screen with 'Connecting to backend...' spinner — never reaches login panel in current version"
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-fix-the-app-initialization-flow-so-that-the-internet-identity-login-screen-signinscreen-is-displayed-immediately-on-app-load-before-any-backend-actor-initialization-or-connection-attempt-the-backend-actor-must-only-be-initialized-after-the-user-has-successfully-authenticated-via-internet-identity",
+      "title": "Fix the app initialization flow so that the Internet Identity login screen (SignInScreen) is displayed immediately on app load, before any backend actor initialization or connection attempt. The backend actor must only be initialized after the user has successfully authenticated via Internet Identity.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Show Internet Identity login panel first before connecting to backend/actor (fix black screen stuck on 'Connecting to backend...')",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Ensure the BackendConnectionGate component only wraps authenticated users. Unauthenticated users must be routed directly to the SignInScreen and must never see the BackendConnectionGate loading state.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Preserve the existing Build Info panel (BuildInfo component, ⓘ icon) that displays: Build Time, Commit Hash, Backend Actor status, Authentication status, Runtime Errors, and Quick Actions (health check, diagnostics copy). This panel must remain accessible from the main app layout after login.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Preserve all 7 sidebar navigation modules exactly as they exist: Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, and Reports. RENTIQ branding must appear in the sidebar. No changes to module structure or functionality.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "RENTIQ",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

@@ -1,0 +1,26 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-fix-the-app-initialization-flow-so-that-the-internet-identity-login-screen-signinscreen-is-displayed-immediately-on-app-load-before-any-backend-actor-initialization-or-connection-attempt-the-backend-actor-must-only-be-initialized-after-the-user-has-successfully-authenticated-via-internet-identity",
+      "featureTitle": "Fix the app initialization flow so that the Internet Identity login screen (SignInScreen) is displayed immediately on app load, before any backend actor initialization or connection attempt. The backend actor must only be initialized after the user has successfully authenticated via Internet Identity.",
+      "files": [
+        "frontend/src/App.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-1"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

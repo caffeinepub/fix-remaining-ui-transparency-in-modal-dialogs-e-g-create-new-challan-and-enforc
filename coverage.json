@@ -1,0 +1,65 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-03-03T10:13:24.801Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 4,
+    "implemented": 1,
+    "items": [
+      {
+        "id": "REQ-1",
+        "summary": "Fix the app initialization flow so that the Internet Identity login screen (SignInScreen) is displayed immediately on app load, before any backend actor initialization or connection attempt. The backend actor must only be initialized after the user has successfully authenticated via Internet Identity.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Ensure the BackendConnectionGate component only wraps authenticated users. Unauthenticated users must be routed directly to the SignInScreen and must never see the BackendConnectionGate loading state.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/components/common/BackendConnectionGate.tsx"
+        ],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Preserve the existing Build Info panel (BuildInfo component, ⓘ icon) that displays: Build Time, Commit Hash, Backend Actor status, Authentication status, Runtime Errors, and Quick Actions (health check, diagnostics copy). This panel must remain accessible from the main app layout after login.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/components/common/BuildInfo.tsx",
+          "frontend/src/components/layout/AppLayout.tsx"
+        ],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Preserve all 7 sidebar navigation modules exactly as they exist: Dashboard, Inventory, Challans, Payments, Petty Cash, Client Balances, and Reports. RENTIQ branding must appear in the sidebar. No changes to module structure or functionality.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/components/layout/AppLayout.tsx"
+        ],
+        "matchedFiles": []
+      }
+    ]
+  },
+  "changedFiles": [
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/App.tsx",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}
