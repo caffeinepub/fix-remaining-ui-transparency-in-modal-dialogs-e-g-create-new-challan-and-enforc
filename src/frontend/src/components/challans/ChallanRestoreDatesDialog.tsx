@@ -1,21 +1,18 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { useRestoreChallanDates } from '../../hooks/useQueries';
-import { useStaffRestrictions } from '../../hooks/useStaffRestrictions';
-import { parseAndValidateChallanRestoreCSV } from '../../utils/challanRestoreImport';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import type { Challan } from '../../backend';
+} from "@/components/ui/dialog";
+import { AlertCircle, CheckCircle2, Loader2, Upload } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import type { Challan } from "../../backend";
+import { useRestoreChallanDates } from "../../hooks/useQueries";
+import { useStaffRestrictions } from "../../hooks/useStaffRestrictions";
+import { parseAndValidateChallanRestoreCSV } from "../../utils/challanRestoreImport";
 
 interface ChallanRestoreDatesDialogProps {
   open: boolean;
@@ -27,29 +24,26 @@ export default function ChallanRestoreDatesDialog({
   onClose,
 }: ChallanRestoreDatesDialogProps) {
   const updateDates = useRestoreChallanDates();
-  const { canBulkUpload, disabledReason } = useStaffRestrictions();
-  const [file, setFile] = useState<File | null>(null);
+  const { canBulkUpload } = useStaffRestrictions();
   const [parsedData, setParsedData] = useState<Challan[] | null>(null);
-  const [parseErrors, setParseErrors] = useState<Array<{ row: number; message: string }>>([]);
-  const [uploadResults, setUploadResults] = useState<{
-    success: boolean;
-    error?: string;
-  } | null>(null);
+  const [parseErrors, setParseErrors] = useState<
+    Array<{ row: number; message: string }>
+  >([]);
+  const [done, setDone] = useState(false);
+  const [fileName, setFileName] = useState("");
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
-    setFile(selectedFile);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
     setParsedData(null);
     setParseErrors([]);
-    setUploadResults(null);
+    setDone(false);
 
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
       const result = parseAndValidateChallanRestoreCSV(text);
-
       if (result.errors.length > 0) {
         setParseErrors(result.errors);
         setParsedData(null);
@@ -58,155 +52,122 @@ export default function ChallanRestoreDatesDialog({
         setParsedData(result.validChallans);
       }
     };
-    reader.readAsText(selectedFile);
+    reader.readAsText(file);
   };
 
   const handleRestore = async () => {
-    if (!parsedData) return;
-    if (!canBulkUpload) return;
-
+    if (!parsedData || !canBulkUpload) return;
     try {
       await updateDates.mutateAsync(parsedData);
-      setUploadResults({ success: true });
-    } catch (error) {
-      console.error('Restore dates error:', error);
-      setUploadResults({
-        success: false,
-        error: String(error),
-      });
+      setDone(true);
+    } catch (err: any) {
+      setParseErrors([{ row: 0, message: err?.message || "Restore failed" }]);
     }
   };
 
-  const handleReset = () => {
-    setFile(null);
+  const handleClose = () => {
     setParsedData(null);
     setParseErrors([]);
-    setUploadResults(null);
-  };
-
-  const handleClose = () => {
-    handleReset();
+    setDone(false);
+    setFileName("");
     onClose();
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="bg-background opacity-100 max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleClose();
+      }}
+    >
+      <DialogContent className="bg-background opacity-100 max-w-lg">
         <DialogHeader>
           <DialogTitle>Restore Challan Dates</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-1 space-y-4">
+        <div className="space-y-4">
           {!canBulkUpload ? (
-            <Alert variant="destructive">
-              <ShieldAlert className="h-4 w-4" />
-              <AlertTitle>Access Restricted</AlertTitle>
-              <AlertDescription>
-                {disabledReason || 'You do not have permission to perform this action.'}
-              </AlertDescription>
-            </Alert>
-          ) : !uploadResults ? (
-            <>
-              <div className="space-y-4">
-                <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 space-y-2">
-                  <h4 className="font-semibold text-blue-900 text-sm">Restore Dates from Original CSV</h4>
-                  <p className="text-xs text-blue-800">
-                    Upload the original challan CSV file to restore rent and return dates.
-                  </p>
-                  <p className="text-xs text-blue-800 mt-2">
-                    Supports both legacy format (Start Date/End Date) and new format (Rent Date/Return Date).
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="file">Select CSV File</Label>
-                  <Input
-                    id="file"
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileSelect}
-                    disabled={!canBulkUpload}
-                  />
-                </div>
-
-                {parsedData && parsedData.length > 0 && (
-                  <Alert className="border-green-200 bg-green-50">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <AlertTitle className="text-green-800">
-                      {parsedData.length} Challan{parsedData.length !== 1 ? 's' : ''} Ready to Restore
-                    </AlertTitle>
-                    <AlertDescription className="text-green-700">
-                      Dates will be updated for existing challans.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {parseErrors.length > 0 && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{parseErrors.length} Error{parseErrors.length !== 1 ? 's' : ''}</AlertTitle>
-                    <AlertDescription>
-                      <ScrollArea className="h-48 mt-2">
-                        <ul className="space-y-1 text-sm">
-                          {parseErrors.map((err, idx) => (
-                            <li key={idx} className="break-words">
-                              Row {err.row}: {err.message}
-                            </li>
-                          ))}
-                        </ul>
-                      </ScrollArea>
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="space-y-4">
-              {uploadResults.success ? (
-                <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertTitle className="text-green-800">
-                    Dates Restored Successfully
-                  </AlertTitle>
-                  <AlertDescription className="text-green-700">
-                    Challan dates have been updated.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Restore Failed</AlertTitle>
-                  <AlertDescription>
-                    {uploadResults.error || 'Unknown error occurred'}
-                  </AlertDescription>
-                </Alert>
-              )}
+            <div className="p-3 bg-destructive/10 rounded-lg text-sm text-destructive">
+              Only admins can restore challan dates.
             </div>
+          ) : done ? (
+            <div className="flex items-center gap-2 text-green-600 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <span className="text-sm">
+                Dates restored successfully for {parsedData?.length || 0}{" "}
+                challans.
+              </span>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Upload a CSV file with Challan ID, Rent Date, and Return Date
+                columns to restore dates.
+              </p>
+
+              <button
+                type="button"
+                className="w-full border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors"
+                onClick={() =>
+                  document.getElementById("restore-file-input")?.click()
+                }
+              >
+                <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {fileName || "Click to select CSV file"}
+                </p>
+              </button>
+              <input
+                id="restore-file-input"
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+
+              {parseErrors.length > 0 && (
+                <div className="bg-destructive/10 rounded-lg p-3 space-y-1 max-h-32 overflow-y-auto">
+                  {parseErrors.map((e, i) => (
+                    <p
+                      // biome-ignore lint/suspicious/noArrayIndexKey: error list is static after parse
+                      key={i}
+                      className="text-xs text-destructive flex items-start gap-1"
+                    >
+                      <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                      {e.row > 0 ? `Row ${e.row}: ` : ""}
+                      {e.message}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {parsedData && parsedData.length > 0 && (
+                <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-3">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                    {parsedData.length} challans ready to restore
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          {!uploadResults ? (
-            <>
-              <Button variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              {parsedData && parsedData.length > 0 && canBulkUpload && (
-                <Button onClick={handleRestore} disabled={updateDates.isPending}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  {updateDates.isPending ? 'Restoring...' : `Restore ${parsedData.length} Challan${parsedData.length !== 1 ? 's' : ''}`}
-                </Button>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>
+            {done ? "Close" : "Cancel"}
+          </Button>
+          {!done && canBulkUpload && (
+            <Button
+              onClick={handleRestore}
+              disabled={
+                !parsedData || parsedData.length === 0 || updateDates.isPending
+              }
+            >
+              {updateDates.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               )}
-            </>
-          ) : (
-            <>
-              <Button variant="outline" onClick={handleReset}>
-                Restore More
-              </Button>
-              <Button onClick={handleClose}>
-                Close
-              </Button>
-            </>
+              Restore {parsedData ? `(${parsedData.length})` : ""}
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

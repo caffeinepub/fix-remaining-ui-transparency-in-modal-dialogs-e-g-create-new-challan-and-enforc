@@ -1,67 +1,67 @@
-import { ReactNode, useEffect } from 'react';
-import { useInternetIdentity } from '../../hooks/useInternetIdentity';
-import { useIsCallerApproved, useIsCallerAdmin } from '../../hooks/useApprovalStatus';
-import { useBootstrapAdmin } from '../../hooks/useBootstrapAdmin';
-import { useAppMode } from '../../hooks/useAppMode';
-import SignInScreen from './SignInScreen';
-import ApprovalRequiredScreen from './ApprovalRequiredScreen';
+import type React from "react";
+import { useEffect, useState } from "react";
+import { useAppMode } from "../../hooks/useAppMode";
+import {
+  useApprovalStatus,
+  useIsCallerAdmin,
+} from "../../hooks/useApprovalStatus";
+import ApprovalRequiredScreen from "./ApprovalRequiredScreen";
 
-interface AuthApprovalGateProps {
-  children: ReactNode;
+interface Props {
+  children: React.ReactNode;
 }
 
-/**
- * Global gate that blocks routes until the user is authenticated and approved or admin,
- * with auto-bootstrap on admin domains.
- */
-export default function AuthApprovalGate({ children }: AuthApprovalGateProps) {
-  const { identity, isInitializing } = useInternetIdentity();
+export default function AuthApprovalGate({ children }: Props) {
   const { isAdminDomain } = useAppMode();
-  const { data: isApproved, isLoading: approvalLoading } = useIsCallerApproved();
-  const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
-  const { bootstrapAdmin, isBootstrapping } = useBootstrapAdmin();
+  const {
+    isApproved,
+    isLoading: approvalLoading,
+    isFetched,
+  } = useApprovalStatus();
+  const { isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
 
-  // Auto-bootstrap admin on first login from admin domain
+  // Timeout to prevent being stuck in "Checking access..." forever
+  const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {
-    if (identity && isAdminDomain && !adminLoading && !isAdmin && !isBootstrapping) {
-      bootstrapAdmin();
-    }
-  }, [identity, isAdminDomain, isAdmin, adminLoading, isBootstrapping, bootstrapAdmin]);
+    const timer = setTimeout(() => setTimedOut(true), 8000);
+    return () => clearTimeout(timer);
+  }, []);
 
-  // Show loading while initializing identity
-  if (isInitializing) {
+  // Admin domain: bypass approval entirely — always allow through
+  if (isAdminDomain) {
+    return <>{children}</>;
+  }
+
+  // User portal: check approval status
+  const isStillLoading =
+    (approvalLoading || adminLoading || !isFetched) && !timedOut;
+
+  if (isStillLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--sidebar-bg)" }}
+      >
+        <div className="text-center space-y-3">
+          <div
+            className="w-10 h-10 border-4 rounded-full animate-spin mx-auto"
+            style={{
+              borderColor: "var(--sidebar-active)",
+              borderTopColor: "transparent",
+            }}
+          />
+          <p style={{ color: "var(--sidebar-muted)" }} className="text-sm">
+            Checking access...
+          </p>
         </div>
       </div>
     );
   }
 
-  // Not authenticated - show sign-in screen
-  if (!identity) {
-    return <SignInScreen />;
-  }
-
-  // Show loading while checking approval status
-  if (approvalLoading || adminLoading || isBootstrapping) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Checking permissions...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Authenticated but not approved and not admin - show approval required screen
+  // After timeout or once loaded: if not approved and not admin, show approval screen
   if (!isApproved && !isAdmin) {
     return <ApprovalRequiredScreen />;
   }
 
-  // Authenticated and approved or admin - render children
   return <>{children}</>;
 }

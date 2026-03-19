@@ -1,9 +1,10 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useActor } from './useActor';
-import { APPROVAL_QUERY_KEYS } from './useApprovalStatus';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useActor } from "./useActor";
 
 /**
- * Mutation hook to bootstrap current user as admin.
+ * Hook to bootstrap the current user as admin.
+ * The actual bootstrap happens in useActor.ts via _initializeAccessControlWithSecret.
+ * This hook provides a way to invalidate approval-related queries after bootstrap.
  */
 export function useBootstrapAdmin() {
   const { actor } = useActor();
@@ -11,25 +12,20 @@ export function useBootstrapAdmin() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      // The backend's initialize method is called automatically in useActor.ts
-      // This hook is for manual retry if needed
-      return { success: true };
+      if (!actor) throw new Error("Actor not available");
+      // The backend auto-bootstraps the first admin via _initializeAccessControlWithSecret
+      // called in useActor.ts. We just need to refresh the approval/admin status.
+      return actor.isCallerAdmin();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: APPROVAL_QUERY_KEYS.isCallerApproved });
-      queryClient.invalidateQueries({ queryKey: APPROVAL_QUERY_KEYS.isCallerAdmin });
-      queryClient.invalidateQueries({ queryKey: ['approvals'] });
+      queryClient.invalidateQueries({ queryKey: ["isCallerApproved"] });
+      queryClient.invalidateQueries({ queryKey: ["isCallerAdmin"] });
+      queryClient.invalidateQueries({ queryKey: ["listApprovals"] });
+    },
+    onError: (error) => {
+      console.warn("[useBootstrapAdmin] Bootstrap check failed:", error);
     },
   });
 
-  return {
-    bootstrapAdmin: mutation.mutate,
-    isBootstrapping: mutation.isPending,
-    isSuccess: mutation.isSuccess,
-    isError: mutation.isError,
-    error: mutation.error,
-    data: mutation.data,
-    retry: mutation.reset,
-  };
+  return mutation;
 }

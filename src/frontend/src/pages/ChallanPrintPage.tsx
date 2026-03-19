@@ -1,21 +1,22 @@
-import { useParams } from '@tanstack/react-router';
-import { useChallans } from '../hooks/useQueries';
-import { formatChallanRentDate, nanoToDate, formatDate, addDays } from '../utils/dates';
-import { calculateChallanTotal, calculateItemTotal } from '../utils/challanTotals';
-import { useEffect } from 'react';
+import React, { useEffect } from "react";
+import { useChallans } from "../hooks/useQueries";
+import {
+  calculateChallanTotal,
+  calculateItemTotal,
+} from "../utils/challanTotals";
+import { addDays, formatDate, nanoToDate } from "../utils/dates";
 
-export default function ChallanPrintPage() {
-  const { challanId } = useParams({ from: '/challans/$challanId/print' });
-  const { data: challans, isLoading } = useChallans();
+interface Props {
+  challanId: string;
+}
 
-  const challan = challans?.find((c) => c.id === challanId);
+export default function ChallanPrintPage({ challanId }: Props) {
+  const { data: challans = [], isLoading } = useChallans();
+  const challan = challans.find((c) => c.id === challanId);
 
   useEffect(() => {
     if (challan && !isLoading) {
-      // Auto-print after a short delay to ensure rendering is complete
-      const timer = setTimeout(() => {
-        window.print();
-      }, 500);
+      const timer = setTimeout(() => window.print(), 600);
       return () => clearTimeout(timer);
     }
   }, [challan, isLoading]);
@@ -23,7 +24,7 @@ export default function ChallanPrintPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-500">Loading challan...</p>
+        <p className="text-muted-foreground">Loading challan...</p>
       </div>
     );
   }
@@ -31,7 +32,7 @@ export default function ChallanPrintPage() {
   if (!challan) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-500">Challan not found</p>
+        <p className="text-muted-foreground">Challan not found: {challanId}</p>
       </div>
     );
   }
@@ -42,14 +43,17 @@ export default function ChallanPrintPage() {
   const creationDate = nanoToDate(challan.creationDate);
 
   return (
-    <div className="print-challan-wrapper min-h-screen bg-white p-8">
-      <div className="print-challan-content max-w-4xl mx-auto">
+    <div className="min-h-screen bg-white p-8 text-black">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 border-b-2 border-gray-800 pb-4">
           <h1 className="text-3xl font-bold text-gray-900 mb-1">RENTIQ</h1>
-          <p className="text-sm text-gray-700 mb-1">Udaipur's Events Equipment Rental Services</p>
+          <p className="text-sm text-gray-700 mb-1">
+            Udaipur's Events Equipment Rental Services
+          </p>
           <p className="text-xs text-gray-600">
-            Address: opposite bhairavnath palace, Sukher, Udaipur, Rajasthan 313001
+            Address: opposite bhairavnath palace, Sukher, Udaipur, Rajasthan
+            313001
           </p>
         </div>
 
@@ -57,14 +61,22 @@ export default function ChallanPrintPage() {
         <div className="mb-6">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Challan: {challan.id}</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Challan: {challan.id}
+              </h2>
               <p className="text-sm text-gray-600 mt-1">
-                Status: <span className="font-semibold">{challan.returned ? 'Returned' : 'Active'}</span>
+                Status:{" "}
+                <span className="font-semibold">
+                  {challan.returned ? "Returned" : "Active"}
+                </span>
               </p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">
-                Challan Creation Date: <span className="font-semibold">{formatDate(creationDate)}</span>
+                Creation Date:{" "}
+                <span className="font-semibold">
+                  {formatDate(creationDate)}
+                </span>
               </p>
             </div>
           </div>
@@ -76,11 +88,11 @@ export default function ChallanPrintPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Venue</p>
-              <p className="text-lg font-semibold">{challan.venue}</p>
+              <p className="text-lg font-semibold">{challan.venue || "—"}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Rent Date</p>
-              <p className="text-lg font-semibold">{formatChallanRentDate(challan.rentDate)}</p>
+              <p className="text-lg font-semibold">{formatDate(rentDate)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Return Date</p>
@@ -92,7 +104,7 @@ export default function ChallanPrintPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Site</p>
-              <p className="text-lg font-semibold">{challan.site || 'N/A'}</p>
+              <p className="text-lg font-semibold">{challan.site || "—"}</p>
             </div>
           </div>
         </div>
@@ -103,20 +115,39 @@ export default function ChallanPrintPage() {
           <table className="w-full border-collapse border border-gray-300">
             <thead>
               <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-4 py-2 text-left">Item Name</th>
-                <th className="border border-gray-300 px-4 py-2 text-right">Quantity</th>
-                <th className="border border-gray-300 px-4 py-2 text-right">Rate</th>
-                <th className="border border-gray-300 px-4 py-2 text-right">Days</th>
-                <th className="border border-gray-300 px-4 py-2 text-right">Total</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">
+                  Item Name
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-right">
+                  Qty
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-right">
+                  Rate/Day
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-right">
+                  Days
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-right">
+                  Total
+                </th>
               </tr>
             </thead>
             <tbody>
-              {challan.items.map((item, index) => (
-                <tr key={index}>
-                  <td className="border border-gray-300 px-4 py-2">{item.itemName}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-right">{item.quantity}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-right">₹{item.rate.toFixed(2)}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-right">{item.rentalDays}</td>
+              {challan.items.map((item, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: challan items are positional
+                <tr key={i}>
+                  <td className="border border-gray-300 px-4 py-2">
+                    {item.itemName}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">
+                    {item.quantity}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">
+                    ₹{item.rate.toFixed(2)}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">
+                    {item.rentalDays}
+                  </td>
                   <td className="border border-gray-300 px-4 py-2 text-right">
                     ₹{calculateItemTotal(item).toFixed(2)}
                   </td>
@@ -132,12 +163,17 @@ export default function ChallanPrintPage() {
             <div className="flex justify-between">
               <span className="text-gray-700">Subtotal:</span>
               <span className="font-semibold">
-                ₹{challan.items.reduce((sum, item) => sum + calculateItemTotal(item), 0).toFixed(2)}
+                ₹
+                {challan.items
+                  .reduce((s, i) => s + calculateItemTotal(i), 0)
+                  .toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-700">Freight:</span>
-              <span className="font-semibold">₹{challan.freight.toFixed(2)}</span>
+              <span className="font-semibold">
+                ₹{challan.freight.toFixed(2)}
+              </span>
             </div>
             <div className="flex justify-between border-t-2 border-gray-800 pt-2">
               <span className="text-lg font-bold">Total:</span>

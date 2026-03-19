@@ -12,14 +12,14 @@ export function safeStringify(value: unknown, indent = 2): string {
       value,
       (_, v) => {
         // Convert BigInt to string with 'n' suffix for clarity
-        if (typeof v === 'bigint') {
+        if (typeof v === "bigint") {
           return `${v.toString()}n`;
         }
         return v;
       },
-      indent
+      indent,
     );
-  } catch (error) {
+  } catch (_error) {
     // Fallback to String() if JSON.stringify fails for any reason
     return String(value);
   }
@@ -40,12 +40,13 @@ export function safeErrorDetails(error: unknown): {
       raw: error.toString(),
     };
   }
-  
+
   // For non-Error objects, safely convert to string
-  const raw = typeof error === 'object' && error !== null
-    ? safeStringify(error)
-    : String(error);
-  
+  const raw =
+    typeof error === "object" && error !== null
+      ? safeStringify(error)
+      : String(error);
+
   return {
     message: raw,
     raw,
@@ -57,12 +58,12 @@ export function safeErrorDetails(error: unknown): {
  */
 export function safeErrorLog(error: unknown): string {
   const details = safeErrorDetails(error);
-  
+
   let output = `Error: ${details.message}`;
-  
+
   if (details.stack) {
     output += `\n\nStack Trace:\n${details.stack}`;
   }
-  
+
   return output;
 }

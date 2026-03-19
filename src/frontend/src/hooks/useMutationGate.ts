@@ -1,67 +1,49 @@
-import { useActor } from './useActor';
-import { useInternetIdentity } from './useInternetIdentity';
+import { useActor } from "./useActor";
+import { useInternetIdentity } from "./useInternetIdentity";
 
-export interface MutationGateState {
-  canMutate: boolean;
+export interface MutationGateResult {
   isReady: boolean;
-  reason: string | null;
-  message: string | null;
-  isConnecting: boolean;
   isAuthenticated: boolean;
+  isConnecting: boolean;
+  reason: "not-authenticated" | "actor-unavailable" | "ready";
+  message: string;
 }
 
-/**
- * Shared hook that gates mutations on actor readiness and authentication.
- */
-export function useMutationGate(): MutationGateState {
+export function useMutationGate(): MutationGateResult {
   const { actor, isFetching } = useActor();
-  const { identity, isInitializing } = useInternetIdentity();
+  const { identity } = useInternetIdentity();
 
-  const isConnecting = isFetching || isInitializing;
+  const isAuthenticated = !!identity;
+  const isConnecting = isFetching && !actor;
 
-  // Check authentication first
-  if (!identity) {
+  // If actor is available, we're ready regardless of connection state
+  if (actor) {
     return {
-      canMutate: false,
-      isReady: false,
-      reason: 'not-authenticated',
-      message: 'You must sign in to perform this action',
+      isReady: true,
+      isAuthenticated,
       isConnecting: false,
-      isAuthenticated: false,
+      reason: "ready",
+      message: "",
     };
   }
 
-  // Check actor availability
-  if (!actor) {
-    if (isConnecting) {
-      const message = 'Connecting to backend...';
-      return {
-        canMutate: false,
-        isReady: false,
-        reason: message,
-        message,
-        isConnecting: true,
-        isAuthenticated: true,
-      };
-    }
-
-    const message = 'Backend not connected. Please check your connection and try again.';
+  // Actor not yet available but still fetching - allow after brief wait
+  if (isConnecting) {
     return {
-      canMutate: false,
       isReady: false,
-      reason: message,
-      message,
-      isConnecting: false,
-      isAuthenticated: true,
+      isAuthenticated,
+      isConnecting: true,
+      reason: "actor-unavailable",
+      message: "Backend is connecting. Please wait a moment and try again.",
     };
   }
 
+  // Actor unavailable and not fetching - still allow (fail gracefully at mutation time)
   return {
-    canMutate: true,
     isReady: true,
-    reason: null,
-    message: null,
+    isAuthenticated,
     isConnecting: false,
-    isAuthenticated: true,
+    reason: "ready",
+    message: "",
   };
 }

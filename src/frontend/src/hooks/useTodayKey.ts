@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 
 /**
  * Hook that returns a stable per-day key (YYYY-MM-DD) and automatically
@@ -8,12 +8,17 @@ import { useState, useEffect } from 'react';
 export function useTodayKey(): string {
   const getTodayString = () => {
     const now = new Date();
-    return now.toISOString().split('T')[0]; // YYYY-MM-DD
+    return now.toISOString().split("T")[0]; // YYYY-MM-DD
   };
 
   const [todayKey, setTodayKey] = useState(getTodayString);
 
   useEffect(() => {
+    const getTodayStr = () => {
+      const now = new Date();
+      return now.toISOString().split("T")[0];
+    };
+
     // Calculate milliseconds until next midnight
     const getMillisecondsUntilMidnight = () => {
       const now = new Date();
@@ -26,9 +31,9 @@ export function useTodayKey(): string {
     // Schedule update at next midnight
     const scheduleNextUpdate = () => {
       const msUntilMidnight = getMillisecondsUntilMidnight();
-      
+
       return setTimeout(() => {
-        setTodayKey(getTodayString());
+        setTodayKey(getTodayStr());
         // Schedule the next update
         scheduleNextUpdate();
       }, msUntilMidnight);

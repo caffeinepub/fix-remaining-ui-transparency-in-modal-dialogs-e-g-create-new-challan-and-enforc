@@ -1,6 +1,6 @@
-import { parseDateOnly, dateToNano, calculateRentalDays } from './dates';
-import { parseCSV } from './csv';
-import type { Challan, ChallanItem } from '../backend';
+import type { Challan, ChallanItem } from "../backend";
+import { parseCSV } from "./csv";
+import { calculateRentalDays, dateToNano, parseDateOnly } from "./dates";
 
 interface ParsedRow {
   challanId: string;
@@ -24,17 +24,25 @@ interface ParseResult {
  * Everything before the last parentheses group is treated as the item name.
  * Returns { name, quantity, rate } or null if invalid
  */
-function parseParenthesesFormat(token: string): { name: string; quantity: number; rate: number } | null {
+function parseParenthesesFormat(
+  token: string,
+): { name: string; quantity: number; rate: number } | null {
   // Match the LAST parentheses group: (qtyxratexdays) or (qtyxratexdaysd)
   // Use greedy capture for name (everything before last parentheses)
   const match = token.match(/^(.+)\(([0-9.]+)x([0-9.]+)x([0-9.]+)d?\)$/);
   if (!match) return null;
 
   const [, name, qtyStr, rateStr] = match;
-  const quantity = parseFloat(qtyStr);
-  const rate = parseFloat(rateStr);
+  const quantity = Number.parseFloat(qtyStr);
+  const rate = Number.parseFloat(rateStr);
 
-  if (!name.trim() || isNaN(quantity) || quantity < 0 || isNaN(rate) || rate < 0) {
+  if (
+    !name.trim() ||
+    Number.isNaN(quantity) ||
+    quantity < 0 ||
+    Number.isNaN(rate) ||
+    rate < 0
+  ) {
     return null;
   }
 
@@ -45,15 +53,23 @@ function parseParenthesesFormat(token: string): { name: string; quantity: number
  * Parse item token in format: ItemName:Quantity:Rate
  * Returns { name, quantity, rate } or null if invalid
  */
-function parseColonFormat(token: string): { name: string; quantity: number; rate: number } | null {
-  const parts = token.split(':').map((p) => p.trim());
+function parseColonFormat(
+  token: string,
+): { name: string; quantity: number; rate: number } | null {
+  const parts = token.split(":").map((p) => p.trim());
   if (parts.length !== 3) return null;
 
   const [name, quantityStr, rateStr] = parts;
-  const quantity = parseFloat(quantityStr);
-  const rate = parseFloat(rateStr);
+  const quantity = Number.parseFloat(quantityStr);
+  const rate = Number.parseFloat(rateStr);
 
-  if (!name || isNaN(quantity) || quantity < 0 || isNaN(rate) || rate < 0) {
+  if (
+    !name ||
+    Number.isNaN(quantity) ||
+    quantity < 0 ||
+    Number.isNaN(rate) ||
+    rate < 0
+  ) {
     return null;
   }
 
@@ -63,7 +79,9 @@ function parseColonFormat(token: string): { name: string; quantity: number; rate
 /**
  * Parse an item token supporting both formats
  */
-function parseItemToken(token: string): { name: string; quantity: number; rate: number } | null {
+function parseItemToken(
+  token: string,
+): { name: string; quantity: number; rate: number } | null {
   // Try parentheses format first
   const parenthesesResult = parseParenthesesFormat(token);
   if (parenthesesResult) return parenthesesResult;
@@ -73,6 +91,15 @@ function parseItemToken(token: string): { name: string; quantity: number; rate: 
   if (colonResult) return colonResult;
 
   return null;
+}
+
+/**
+ * Find a header index using case-insensitive, whitespace-trimmed matching.
+ * Returns -1 if not found.
+ */
+function findHeaderIndex(headers: string[], target: string): number {
+  const normalizedTarget = target.trim().toLowerCase();
+  return headers.findIndex((h) => h.trim().toLowerCase() === normalizedTarget);
 }
 
 export function parseChallanNewFormatCSV(csvText: string): ParseResult {
@@ -86,37 +113,47 @@ export function parseChallanNewFormatCSV(csvText: string): ParseResult {
       return {
         totalRows: 0,
         validChallans: [],
-        errors: [{ row: 0, message: 'File is empty' }],
+        errors: [{ row: 0, message: "File is empty" }],
       };
     }
 
-    // Validate headers
-    const expectedHeaders = [
-      'Challan ID',
-      'Client Name',
-      'Venue',
-      'Items',
-      'Rent Date',
-      'Return Date',
-      'Freight',
+    // Required headers for the new format — must match exactly what downloadChallanNewFormatTemplate generates
+    const requiredHeaders = [
+      "Challan ID",
+      "Client Name",
+      "Venue",
+      "Items",
+      "Rent Date",
+      "Return Date",
+      "Freight",
     ];
 
-    const missingHeaders = expectedHeaders.filter((h) => !headers.includes(h));
+    // Use case-insensitive, whitespace-trimmed matching to find missing headers
+    const missingHeaders = requiredHeaders.filter(
+      (h) => findHeaderIndex(headers, h) === -1,
+    );
+
     if (missingHeaders.length > 0) {
       return {
         totalRows: 0,
         validChallans: [],
-        errors: [{ row: 1, message: `Missing required columns: ${missingHeaders.join(', ')}` }],
+        errors: [
+          {
+            row: 1,
+            message: `Missing required columns: ${missingHeaders.join(", ")}`,
+          },
+        ],
       };
     }
 
-    const challanIdIndex = headers.indexOf('Challan ID');
-    const clientNameIndex = headers.indexOf('Client Name');
-    const venueIndex = headers.indexOf('Venue');
-    const itemsIndex = headers.indexOf('Items');
-    const rentDateIndex = headers.indexOf('Rent Date');
-    const returnDateIndex = headers.indexOf('Return Date');
-    const freightIndex = headers.indexOf('Freight');
+    // Resolve column indices using case-insensitive matching
+    const challanIdIndex = findHeaderIndex(headers, "Challan ID");
+    const clientNameIndex = findHeaderIndex(headers, "Client Name");
+    const venueIndex = findHeaderIndex(headers, "Venue");
+    const itemsIndex = findHeaderIndex(headers, "Items");
+    const rentDateIndex = findHeaderIndex(headers, "Rent Date");
+    const returnDateIndex = findHeaderIndex(headers, "Return Date");
+    const freightIndex = findHeaderIndex(headers, "Freight");
 
     // Parse data rows
     for (let i = 0; i < rows.length; i++) {
@@ -124,37 +161,41 @@ export function parseChallanNewFormatCSV(csvText: string): ParseResult {
       const rowNumber = i + 2; // +2 because header is row 1, data starts at row 2
 
       try {
-        const challanId = values[challanIdIndex] || '';
-        const clientName = values[clientNameIndex] || '';
-        const venue = values[venueIndex] || ''; // Allow blank venue
-        const itemsStr = values[itemsIndex] || '';
-        const rentDateStr = values[rentDateIndex] || '';
-        const returnDateStr = values[returnDateIndex] || '';
-        const freightStr = values[freightIndex] || '';
+        const challanId = (values[challanIdIndex] || "").trim();
+        const clientName = (values[clientNameIndex] || "").trim();
+        const venue = (values[venueIndex] || "").trim(); // Allow blank venue
+        const itemsStr = (values[itemsIndex] || "").trim();
+        const rentDateStr = (values[rentDateIndex] || "").trim();
+        const returnDateStr = (values[returnDateIndex] || "").trim();
+        const freightStr = (values[freightIndex] || "").trim();
 
         if (!challanId) {
-          errors.push({ row: rowNumber, message: 'Missing Challan ID' });
+          errors.push({ row: rowNumber, message: "Missing Challan ID" });
           continue;
         }
 
         if (!clientName) {
-          errors.push({ row: rowNumber, message: 'Missing Client Name' });
+          errors.push({ row: rowNumber, message: "Missing Client Name" });
           continue;
         }
 
         if (!itemsStr) {
-          errors.push({ row: rowNumber, message: 'Missing Items' });
+          errors.push({ row: rowNumber, message: "Missing Items" });
           continue;
         }
 
         // Parse items (semicolon-separated tokens)
-        const itemTokens = itemsStr.split(';').map((t) => t.trim()).filter((t) => t);
+        const itemTokens = itemsStr
+          .split(";")
+          .map((t) => t.trim())
+          .filter((t) => t);
         if (itemTokens.length === 0) {
-          errors.push({ row: rowNumber, message: 'No items found' });
+          errors.push({ row: rowNumber, message: "No items found" });
           continue;
         }
 
-        const items: Array<{ name: string; quantity: number; rate: number }> = [];
+        const items: Array<{ name: string; quantity: number; rate: number }> =
+          [];
         let itemParseError = false;
 
         for (const token of itemTokens) {
@@ -175,26 +216,38 @@ export function parseChallanNewFormatCSV(csvText: string): ParseResult {
         // Parse dates
         const rentDate = parseDateOnly(rentDateStr);
         if (!rentDate) {
-          errors.push({ row: rowNumber, message: `Invalid Rent Date: "${rentDateStr}"` });
+          errors.push({
+            row: rowNumber,
+            message: `Invalid Rent Date: "${rentDateStr}"`,
+          });
           continue;
         }
 
         const returnDate = parseDateOnly(returnDateStr);
         if (!returnDate) {
-          errors.push({ row: rowNumber, message: `Invalid Return Date: "${returnDateStr}"` });
+          errors.push({
+            row: rowNumber,
+            message: `Invalid Return Date: "${returnDateStr}"`,
+          });
           continue;
         }
 
         // Validate Return Date is strictly after Rent Date
         if (returnDate <= rentDate) {
-          errors.push({ row: rowNumber, message: 'Return date must be after rent date' });
+          errors.push({
+            row: rowNumber,
+            message: "Return date must be after rent date",
+          });
           continue;
         }
 
         // Parse freight
-        const freight = parseFloat(freightStr);
-        if (isNaN(freight) || freight < 0) {
-          errors.push({ row: rowNumber, message: `Invalid Freight: "${freightStr}"` });
+        const freight = Number.parseFloat(freightStr);
+        if (Number.isNaN(freight) || freight < 0) {
+          errors.push({
+            row: rowNumber,
+            message: `Invalid Freight: "${freightStr}"`,
+          });
           continue;
         }
 
@@ -244,7 +297,7 @@ export function parseChallanNewFormatCSV(csvText: string): ParseResult {
       numberOfDays,
       returned: false,
       rentDate: rentDateNano,
-      site: '',
+      site: "",
       creationDate: creationDateNano,
     };
   });
@@ -256,6 +309,8 @@ export function parseChallanNewFormatCSV(csvText: string): ParseResult {
   };
 }
 
-export function parseAndValidateChallanNewFormatCSV(csvText: string): ParseResult {
+export function parseAndValidateChallanNewFormatCSV(
+  csvText: string,
+): ParseResult {
   return parseChallanNewFormatCSV(csvText);
 }

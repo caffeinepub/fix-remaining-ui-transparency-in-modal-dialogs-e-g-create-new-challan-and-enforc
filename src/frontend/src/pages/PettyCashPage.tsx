@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -7,138 +8,217 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Plus, Upload, Download } from 'lucide-react';
-import { usePettyCash } from '../hooks/useQueries';
-import { useStaffRestrictions } from '../hooks/useStaffRestrictions';
-import PettyCashFormDialog from '../components/petty-cash/PettyCashFormDialog';
-import PettyCashBulkUploadDialog from '../components/petty-cash/PettyCashBulkUploadDialog';
-import QueryErrorState from '../components/common/QueryErrorState';
-import { generatePettyCashPDF } from '../utils/pettyCashPdf';
-import { toast } from 'sonner';
+} from "@/components/ui/table";
+import { Edit, Plus, Trash2, Upload, Wallet } from "lucide-react";
+import React, { useState } from "react";
+import { toast } from "sonner";
+import type { PettyCash, PettyCashWithAttachments } from "../backend";
+import { PettyCashBulkUploadDialog } from "../components/petty-cash/PettyCashBulkUploadDialog";
+import { PettyCashFormDialog } from "../components/petty-cash/PettyCashFormDialog";
+import { useDeletePettyCash, usePettyCash } from "../hooks/useQueries";
+import { useStaffRestrictions } from "../hooks/useStaffRestrictions";
+import { nanoToDate } from "../utils/dates";
+
+function fmtDate(nanos: bigint): string {
+  return nanoToDate(nanos).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function fmtCur(value: number): string {
+  return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 export default function PettyCashPage() {
-  const { data: pettyCash, isLoading, error, refetch } = usePettyCash();
-  const { canBulkUpload, disabledReason } = useStaffRestrictions();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const { data: pettyCashWithAttachments = [], isLoading } = usePettyCash();
+  const deletePettyCash = useDeletePettyCash();
+  const { canDelete, canBulkUpload } = useStaffRestrictions();
 
-  const handleBulkUploadClick = () => {
-    if (!canBulkUpload) {
-      toast.error(disabledReason || 'Bulk upload is not available');
-      return;
-    }
-    setIsBulkUploadOpen(true);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editRecord, setEditRecord] = useState<PettyCash | null>(null);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+
+  const records = pettyCashWithAttachments as PettyCashWithAttachments[];
+  const sortedRecords = [...records].sort(
+    (a, b) => Number(b.pettyCash.date) - Number(a.pettyCash.date),
+  );
+
+  const handleEdit = (record: PettyCash) => {
+    setEditRecord(record);
+    setFormOpen(true);
   };
 
-  const handleDownloadPDF = async (record: any) => {
-    try {
-      await generatePettyCashPDF(record.pettyCash, record.attachments);
-    } catch (error) {
-      console.error('Failed to generate PDF:', error);
-      toast.error('Failed to generate PDF. Please try again.');
-    }
+  const handleDelete = async (date: bigint) => {
+    if (!window.confirm("Delete this petty cash record?")) return;
+    deletePettyCash.mutate(date, {
+      onSuccess: () => toast.success("Record deleted"),
+      onError: (e) => toast.error(`Delete failed: ${e.message}`),
+    });
   };
-
-  if (error) {
-    return <QueryErrorState error={error} onRetry={refetch} />;
-  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-3xl font-bold">Petty Cash</h1>
-          <p className="text-gray-600 mt-1">Track daily petty cash transactions</p>
+          <h1 className="text-2xl font-bold">Petty Cash</h1>
+          <p className="text-sm text-muted-foreground">
+            Daily cash management records
+          </p>
         </div>
         <div className="flex gap-2">
           {canBulkUpload && (
             <Button
-              onClick={handleBulkUploadClick}
               variant="outline"
-              className="gap-2"
+              size="sm"
+              onClick={() => setBulkUploadOpen(true)}
             >
-              <Upload className="h-4 w-4" />
+              <Upload className="w-4 h-4 mr-1.5" />
               Bulk Upload
             </Button>
           )}
-          <Button onClick={() => setIsFormOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditRecord(null);
+              setFormOpen(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
             Add Record
           </Button>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">Loading petty cash records...</p>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length skeleton list
+            <Skeleton key={i} className="h-12" />
+          ))}
         </div>
-      ) : pettyCash && pettyCash.length > 0 ? (
-        <div className="bg-white rounded-lg border shadow-sm">
+      ) : sortedRecords.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <Wallet className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">No petty cash records yet</p>
+        </div>
+      ) : (
+        <div className="rounded-lg border overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead className="text-right">Opening Balance</TableHead>
+                <TableHead className="text-right">Opening</TableHead>
                 <TableHead className="text-right">Cash from MD</TableHead>
+                <TableHead className="text-right">Transfer</TableHead>
+                <TableHead className="text-right">Cash Received</TableHead>
                 <TableHead className="text-right">Expenses</TableHead>
-                <TableHead className="text-right">Staff Advance</TableHead>
-                <TableHead className="text-right">Handover to MD</TableHead>
-                <TableHead className="text-right">Closing Balance</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">Staff Adv.</TableHead>
+                <TableHead className="text-right">Handover MD</TableHead>
+                <TableHead className="text-right">Net Change</TableHead>
+                <TableHead className="text-right">Closing</TableHead>
+                <TableHead>Remarks</TableHead>
+                <TableHead className="w-20">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pettyCash.map((record) => (
-                <TableRow key={Number(record.pettyCash.date)}>
-                  <TableCell>
-                    {new Date(Number(record.pettyCash.date) / 1_000_000).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ₹{record.pettyCash.openingBalance.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ₹{record.pettyCash.cashFromMd.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ₹{record.pettyCash.expenses.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ₹{record.pettyCash.staffAdvance.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ₹{record.pettyCash.handoverToMd.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    ₹{record.pettyCash.closingBalance.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDownloadPDF(record)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {sortedRecords.map(({ pettyCash: record }) => {
+                const netChange = record.netChange;
+                const closing = record.closingBalance;
+                return (
+                  <TableRow key={record.date.toString()}>
+                    <TableCell className="font-medium whitespace-nowrap">
+                      {fmtDate(record.date)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {fmtCur(record.openingBalance)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {fmtCur(record.cashFromMd)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {fmtCur(record.transferFromCashEquivalents)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {fmtCur(record.cashReceivedAuto)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {fmtCur(record.expenses)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {fmtCur(record.staffAdvance)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {fmtCur(record.handoverToMd)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge
+                        variant={netChange >= 0 ? "default" : "destructive"}
+                        className="text-xs"
+                      >
+                        {fmtCur(netChange)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span
+                        className={
+                          closing >= 0
+                            ? "text-green-600 font-semibold text-sm"
+                            : "text-destructive font-semibold text-sm"
+                        }
+                      >
+                        {fmtCur(closing)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm max-w-[120px] truncate">
+                      {record.remarks || "—"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleEdit(record)}
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(record.date)}
+                            disabled={deletePettyCash.isPending}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
-      ) : (
-        <div className="text-center py-12 bg-white rounded-lg border">
-          <p className="text-gray-500">No petty cash records found</p>
-          <Button onClick={() => setIsFormOpen(true)} className="mt-4">
-            Add Your First Record
-          </Button>
-        </div>
       )}
 
-      <PettyCashFormDialog open={isFormOpen} onClose={() => setIsFormOpen(false)} />
-      {canBulkUpload && (
-        <PettyCashBulkUploadDialog open={isBulkUploadOpen} onClose={() => setIsBulkUploadOpen(false)} />
-      )}
+      <PettyCashFormDialog
+        open={formOpen}
+        onOpenChange={(o) => {
+          setFormOpen(o);
+          if (!o) setEditRecord(null);
+        }}
+        editRecord={editRecord}
+      />
+
+      <PettyCashBulkUploadDialog
+        open={bulkUploadOpen}
+        onClose={() => setBulkUploadOpen(false)}
+        existingRecords={records}
+      />
     </div>
   );
 }

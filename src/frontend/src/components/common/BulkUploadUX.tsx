@@ -1,8 +1,14 @@
-import { ReactNode } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertCircle, CheckCircle2, Download, Upload, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Download,
+  Info,
+  Upload,
+} from "lucide-react";
+import type { ReactNode } from "react";
 
 interface StepsProps {
   children: ReactNode;
@@ -29,7 +35,9 @@ interface StepsDescriptionProps {
   children: ReactNode;
 }
 
-export function BulkUploadStepsDescription({ children }: StepsDescriptionProps) {
+export function BulkUploadStepsDescription({
+  children,
+}: StepsDescriptionProps) {
   return <div className="text-xs text-blue-800 space-y-1">{children}</div>;
 }
 
@@ -45,7 +53,9 @@ interface TemplateDownloadButtonProps {
   onDownload: () => void;
 }
 
-export function BulkUploadTemplateDownloadButton({ onDownload }: TemplateDownloadButtonProps) {
+export function BulkUploadTemplateDownloadButton({
+  onDownload,
+}: TemplateDownloadButtonProps) {
   return (
     <Button
       type="button"
@@ -66,7 +76,11 @@ interface ValidationButtonProps {
   isProcessing?: boolean;
 }
 
-export function BulkUploadValidationButton({ onClick, disabled, isProcessing }: ValidationButtonProps) {
+export function BulkUploadValidationButton({
+  onClick,
+  disabled,
+  isProcessing,
+}: ValidationButtonProps) {
   return (
     <Button
       onClick={onClick}
@@ -74,7 +88,7 @@ export function BulkUploadValidationButton({ onClick, disabled, isProcessing }: 
       className="w-full bg-blue-600 hover:bg-blue-700"
     >
       <Upload className="mr-2 h-4 w-4" />
-      {isProcessing ? 'Validating...' : 'Validate File'}
+      {isProcessing ? "Validating..." : "Validate File"}
     </Button>
   );
 }
@@ -94,10 +108,10 @@ export function BulkUploadPreviewSection({
   errors,
   onUpload,
   isProcessing,
-  itemLabel = 'item',
+  itemLabel = "item",
 }: PreviewSectionProps) {
-  const itemLabelPlural = itemLabel + 's';
-  
+  const itemLabelPlural = `${itemLabel}s`;
+
   return (
     <div className="space-y-4">
       {validCount > 0 && (
@@ -115,11 +129,14 @@ export function BulkUploadPreviewSection({
       {errors.length > 0 && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{errors.length} Error{errors.length !== 1 ? 's' : ''} Found</AlertTitle>
+          <AlertTitle>
+            {errors.length} Error{errors.length !== 1 ? "s" : ""} Found
+          </AlertTitle>
           <AlertDescription>
             <ScrollArea className="h-48 mt-2">
               <ul className="space-y-1 text-sm">
                 {errors.map((err, idx) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: error list is static after parse
                   <li key={idx} className="break-words">
                     {err.id && <span className="font-semibold">{err.id} </span>}
                     Row {err.rowNumber}: {err.error}
@@ -137,7 +154,9 @@ export function BulkUploadPreviewSection({
           disabled={isProcessing}
           className="w-full bg-green-600 hover:bg-green-700"
         >
-          {isProcessing ? 'Uploading...' : `Upload ${validCount} ${validCount === 1 ? itemLabel : itemLabelPlural}`}
+          {isProcessing
+            ? "Uploading..."
+            : `Upload ${validCount} ${validCount === 1 ? itemLabel : itemLabelPlural}`}
         </Button>
       )}
     </div>
@@ -149,14 +168,18 @@ interface ResultsSummaryProps {
   failedCount: number;
 }
 
-export function BulkUploadResultsSummary({ successCount, failedCount }: ResultsSummaryProps) {
+export function BulkUploadResultsSummary({
+  successCount,
+  failedCount,
+}: ResultsSummaryProps) {
   return (
     <div className="space-y-4">
       {successCount > 0 && (
         <Alert className="border-green-200 bg-green-50">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertTitle className="text-green-800">
-            Successfully Restored {successCount} Challan{successCount !== 1 ? 's' : ''}
+            Successfully Restored {successCount} Challan
+            {successCount !== 1 ? "s" : ""}
           </AlertTitle>
         </Alert>
       )}
@@ -177,16 +200,21 @@ interface ResultsSectionProps {
   itemLabel?: string;
 }
 
-export function BulkUploadResultsSection({ successCount, failures, itemLabel = 'item' }: ResultsSectionProps) {
-  const itemLabelPlural = itemLabel + 's';
-  
+export function BulkUploadResultsSection({
+  successCount,
+  failures,
+  itemLabel = "item",
+}: ResultsSectionProps) {
+  const itemLabelPlural = `${itemLabel}s`;
+
   return (
     <div className="space-y-4">
       {successCount > 0 && (
         <Alert className="border-green-200 bg-green-50">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertTitle className="text-green-800">
-            Successfully Created {successCount} {successCount === 1 ? itemLabel : itemLabelPlural}
+            Successfully Created {successCount}{" "}
+            {successCount === 1 ? itemLabel : itemLabelPlural}
           </AlertTitle>
         </Alert>
       )}
@@ -194,12 +222,15 @@ export function BulkUploadResultsSection({ successCount, failures, itemLabel = '
       {failures.length > 0 && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{failures.length} {failures.length === 1 ? itemLabel : itemLabelPlural} Failed</AlertTitle>
+          <AlertTitle>
+            {failures.length}{" "}
+            {failures.length === 1 ? itemLabel : itemLabelPlural} Failed
+          </AlertTitle>
           <AlertDescription>
             <ScrollArea className="h-32 mt-2">
               <ul className="space-y-1 text-sm break-words">
-                {failures.map((fail, idx) => (
-                  <li key={idx}>
+                {failures.map((fail) => (
+                  <li key={fail.id}>
                     {fail.id}: {fail.error}
                   </li>
                 ))}
@@ -237,9 +268,7 @@ export function BulkUploadErrorDisplay({ error }: ErrorDisplayProps) {
     <Alert variant="destructive">
       <AlertCircle className="h-4 w-4" />
       <AlertTitle>Upload Failed</AlertTitle>
-      <AlertDescription className="break-words">
-        {error}
-      </AlertDescription>
+      <AlertDescription className="break-words">{error}</AlertDescription>
     </Alert>
   );
 }

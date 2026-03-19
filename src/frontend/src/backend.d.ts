@@ -30,12 +30,6 @@ export interface ClientBulkCreateResult {
     error?: string;
     success: boolean;
 }
-export interface InventoryBulkCreateResult {
-    created?: InventoryItem;
-    name: string;
-    error?: string;
-    success: boolean;
-}
 export interface PettyCash {
     categoryExpenses: Array<PettyCashCategory>;
     date: bigint;
@@ -43,6 +37,7 @@ export interface PettyCash {
     createdAt: bigint;
     transferFromCashEquivalents: number;
     staffAdvance: number;
+    cashReceivedAuto: number;
     closingBalance: number;
     openingBalance: number;
     handoverToMd: number;
@@ -60,8 +55,15 @@ export interface Payment {
     site: string;
     amount: number;
 }
+export interface InventoryBulkCreateResult {
+    created?: InventoryItem;
+    name: string;
+    error?: string;
+    success: boolean;
+}
 export interface BuildMetadata {
     gitCommitHash: string;
+    isTestEnv: boolean;
     buildTime: bigint;
     canisterId: string;
 }
@@ -112,6 +114,9 @@ export interface ChallanItem {
     itemName: string;
     quantity: number;
 }
+export interface UserProfile {
+    name: string;
+}
 export interface PaymentBulkCreateResult {
     id: string;
     created?: Payment;
@@ -133,7 +138,7 @@ export interface backendInterface {
     addClient(name: string, createdAt: bigint): Promise<void>;
     addInventoryItem(name: string, totalQuantity: number, dailyRate: number): Promise<void>;
     addPayment(id: string, date: bigint, client: string, mode: string, amount: number, referenceNumber: string, createdAt: bigint, site: string): Promise<void>;
-    addPettyCash(date: bigint, openingBalance: number, cashFromMd: number, expenses: number, staffAdvance: number, handoverToMd: number, netChange: number, closingBalance: number, transferFromCashEquivalents: number, categoryExpenses: Array<PettyCashCategory>, remarks: string, createdAt: bigint): Promise<void>;
+    addPettyCash(date: bigint, openingBalance: number, cashFromMd: number, expenses: number, staffAdvance: number, handoverToMd: number, transferFromCashEquivalents: number, categoryExpenses: Array<PettyCashCategory>, remarks: string, cashReceivedAuto: number, createdAt: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     bulkAddPayments(batch: Array<Payment>): Promise<Array<PaymentBulkCreateResult>>;
     bulkAddPettyCash(batch: Array<PettyCash>): Promise<Array<PettyCashBulkCreateResult>>;
@@ -153,6 +158,7 @@ export interface backendInterface {
     getAllPettyCashRecordsWithAttachments(): Promise<Array<PettyCashWithAttachments>>;
     getAttachmentsForPettyCashRecord(date: bigint): Promise<Array<PettyCashAttachment>>;
     getBuildMetadata(): Promise<BuildMetadata>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getChallansByClient(client: string): Promise<Array<Challan>>;
     getChallansByDateRange(startDate: bigint, endDate: bigint): Promise<Array<Challan>>;
@@ -160,6 +166,7 @@ export interface backendInterface {
     getPaymentsByClient(client: string): Promise<Array<Payment>>;
     getPaymentsByDateRange(startDate: bigint, endDate: bigint): Promise<Array<Payment>>;
     getPettyCashByDateRange(startDate: bigint, endDate: bigint): Promise<Array<PettyCash>>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
     healthCheck(): Promise<bigint>;
     isCallerAdmin(): Promise<boolean>;
     isCallerApproved(): Promise<boolean>;
@@ -168,8 +175,9 @@ export interface backendInterface {
     removeAttachmentFromPettyCashRecord(date: bigint, attachmentId: string): Promise<Array<PettyCashAttachment>>;
     requestApproval(): Promise<void>;
     revertChallanToActive(_id: string): Promise<void>;
+    saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setApproval(user: Principal, status: ApprovalStatus): Promise<void>;
     updateChallan(id: string, clientName: string, venue: string, items: Array<ChallanItem>, freight: number, numberOfDays: number, rentDate: bigint, site: string): Promise<void>;
     updateInventoryItem(name: string, totalQuantity: number, dailyRate: number): Promise<void>;
-    updatePettyCash(originalDate: bigint, openingBalance: number, cashFromMd: number, expenses: number, staffAdvance: number, handoverToMd: number, netChange: number, closingBalance: number, transferFromCashEquivalents: number, categoryExpenses: Array<PettyCashCategory>, remarks: string): Promise<void>;
+    updatePettyCash(originalDate: bigint, openingBalance: number, cashFromMd: number, expenses: number, staffAdvance: number, handoverToMd: number, transferFromCashEquivalents: number, categoryExpenses: Array<PettyCashCategory>, remarks: string, cashReceivedAuto: number): Promise<void>;
 }

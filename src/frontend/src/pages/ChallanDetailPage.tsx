@@ -1,83 +1,101 @@
-import { useParams, useNavigate } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Edit, Trash2, Printer, Lock } from 'lucide-react';
-import { useChallans, useDeleteChallan } from '../hooks/useQueries';
-import { useStaffRestrictions } from '../hooks/useStaffRestrictions';
-import { formatChallanRentDate } from '../utils/dates';
-import { calculateChallanTotal, calculateItemTotal } from '../utils/challanTotals';
-import ChallanEditDialog from '../components/challans/ChallanEditDialog';
-import { useState } from 'react';
-import { toast } from 'sonner';
-import { normalizeError } from '../utils/errors';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  ArrowLeft,
+  Edit,
+  Lock,
+  Printer,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
+import React, { useState } from "react";
+import { toast } from "sonner";
+import { useAppNav } from "../App";
+import type { Challan } from "../backend";
+import ChallanEditDialog from "../components/challans/ChallanEditDialog";
+import {
+  useChallans,
+  useDeleteChallan,
+  useMarkChallanReturned,
+} from "../hooks/useQueries";
+import { useStaffRestrictions } from "../hooks/useStaffRestrictions";
+import {
+  calculateChallanTotal,
+  calculateItemTotal,
+} from "../utils/challanTotals";
+import {
+  addDays,
+  formatChallanRentDate,
+  formatDate,
+  nanoToDate,
+} from "../utils/dates";
 
-export default function ChallanDetailPage() {
-  const { challanId } = useParams({ from: '/challans/$challanId' });
-  const navigate = useNavigate();
-  const { data: challans, isLoading } = useChallans();
+interface Props {
+  challanId: string;
+}
+
+export default function ChallanDetailPage({ challanId }: Props) {
+  const { data: challans = [], isLoading } = useChallans();
+  const { canDelete } = useStaffRestrictions();
   const deleteChallan = useDeleteChallan();
-  const { canDelete, disabledReason } = useStaffRestrictions();
-  const [showEditDialog, setShowEditDialog] = useState(false);
+  const markReturned = useMarkChallanReturned();
+  const { navigate } = useAppNav();
+  const [editOpen, setEditOpen] = useState(false);
 
-  const challan = challans?.find((c) => c.id === challanId);
+  const challan = challans.find((c) => c.id === challanId);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!challan) return;
-
-    if (challan.returned) {
-      toast.error('Returned challans are locked and cannot be deleted.');
+    if (!confirm(`Delete challan ${challan.id}? This cannot be undone.`))
       return;
-    }
-
-    if (!canDelete) {
-      toast.error(disabledReason || 'Delete action is not available');
-      return;
-    }
-    
-    if (window.confirm(`Are you sure you want to delete challan ${challan.id}?`)) {
-      try {
-        await deleteChallan.mutateAsync(challan.id);
-        toast.success('Challan deleted successfully');
-        navigate({ to: '/challans' });
-      } catch (error) {
-        toast.error(normalizeError(error));
-      }
-    }
+    deleteChallan.mutate(challan.id, {
+      onSuccess: () => {
+        toast.success("Challan deleted");
+        navigate("challans");
+      },
+      onError: (e) => toast.error(`Delete failed: ${e.message}`),
+    });
   };
 
-  const handleEdit = () => {
-    if (challan?.returned) {
-      toast.error('Returned challans are locked and cannot be edited.');
+  const handleMarkReturned = () => {
+    if (!challan) return;
+    if (
+      !confirm(`Mark challan ${challan.id} as returned? This cannot be undone.`)
+    )
       return;
-    }
-    setShowEditDialog(true);
-  };
-
-  const handlePrint = () => {
-    navigate({ to: `/challans/${challanId}/print` });
+    markReturned.mutate(challan.id, {
+      onSuccess: () => toast.success("Challan marked as returned"),
+      onError: (e) => toast.error(`Failed: ${e.message}`),
+    });
   };
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="h-8 w-48 animate-pulse rounded bg-gray-200" />
-        <div className="h-64 animate-pulse rounded bg-gray-200" />
+      <div className="p-6">
+        <div className="h-8 w-48 animate-pulse rounded bg-muted mb-4" />
+        <div className="h-64 animate-pulse rounded bg-muted" />
       </div>
     );
   }
 
   if (!challan) {
     return (
-      <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate({ to: '/challans' })}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Challans
+      <div className="p-6 space-y-4">
+        <Button variant="ghost" onClick={() => navigate("challans")}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Challans
         </Button>
         <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-gray-500">Challan not found</p>
+          <CardContent className="pt-6 text-center text-muted-foreground">
+            Challan not found
           </CardContent>
         </Card>
       </div>
@@ -85,36 +103,55 @@ export default function ChallanDetailPage() {
   }
 
   const total = calculateChallanTotal(challan);
+  const rentDate = nanoToDate(challan.rentDate);
+  const returnDate = addDays(rentDate, challan.numberOfDays);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate({ to: '/challans' })}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Challans
+    <div className="p-4 md:p-6 space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate("challans")}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="mr-2 h-4 w-4" />
-            Print
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("challan-print", { id: challan.id })}
+          >
+            <Printer className="mr-2 h-4 w-4" /> Print
           </Button>
-          {!challan.returned ? (
+          {!challan.returned && (
             <>
-              <Button variant="outline" onClick={handleEdit}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditOpen(true)}
+              >
+                <Edit className="mr-2 h-4 w-4" /> Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkReturned}
+                disabled={markReturned.isPending}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" /> Mark Returned
               </Button>
               {canDelete && (
-                <Button variant="destructive" onClick={handleDelete}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={deleteChallan.isPending}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete
                 </Button>
               )}
             </>
-          ) : (
-            <div className="flex items-center gap-2 text-sm text-gray-500 px-3 py-2 bg-gray-100 rounded-md">
-              <Lock className="h-4 w-4" />
-              <span>Returned challans are locked</span>
+          )}
+          {challan.returned && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground px-3 py-1.5 bg-muted rounded-md">
+              <Lock className="h-4 w-4" /> Returned & Locked
             </div>
           )}
         </div>
@@ -123,63 +160,72 @@ export default function ChallanDetailPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Challan Details: {challan.id}</CardTitle>
-            {challan.returned ? (
-              <Badge variant="secondary">Returned</Badge>
-            ) : (
-              <Badge>Active</Badge>
-            )}
+            <CardTitle className="text-lg">Challan: {challan.id}</CardTitle>
+            <Badge variant={challan.returned ? "secondary" : "default"}>
+              {challan.returned ? "Returned" : "Active"}
+            </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-gray-600">Client Name</p>
-              <p className="text-lg font-semibold">{challan.clientName}</p>
+              <p className="text-xs text-muted-foreground">Client</p>
+              <p className="font-semibold">{challan.clientName}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Venue</p>
-              <p className="text-lg font-semibold">{challan.venue}</p>
+              <p className="text-xs text-muted-foreground">Venue</p>
+              <p className="font-semibold">{challan.venue || "—"}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Rent Date</p>
-              <p className="text-lg font-semibold">{formatChallanRentDate(challan.rentDate)}</p>
+              <p className="text-xs text-muted-foreground">Site</p>
+              <p className="font-semibold">{challan.site || "—"}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Number of Days</p>
-              <p className="text-lg font-semibold">{challan.numberOfDays}</p>
+              <p className="text-xs text-muted-foreground">Rent Date</p>
+              <p className="font-semibold">
+                {formatChallanRentDate(challan.rentDate)}
+              </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Site</p>
-              <p className="text-lg font-semibold">{challan.site || 'N/A'}</p>
+              <p className="text-xs text-muted-foreground">Return Date</p>
+              <p className="font-semibold">{formatDate(returnDate)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Freight</p>
-              <p className="text-lg font-semibold">₹{challan.freight.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Number of Days</p>
+              <p className="font-semibold">{challan.numberOfDays}</p>
             </div>
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Items</h3>
-            <div className="rounded-md border">
+            <h3 className="font-semibold mb-3">Items</h3>
+            <div className="rounded-md border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Item Name</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Rate</TableHead>
-                    <TableHead>Rental Days</TableHead>
-                    <TableHead>Total</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Rate/Day</TableHead>
+                    <TableHead className="text-right">Days</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {challan.items.map((item, index) => (
-                    <TableRow key={index}>
+                  {challan.items.map((item, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: challan items are positional
+                    <TableRow key={i}>
                       <TableCell>{item.itemName}</TableCell>
-                      <TableCell>{item.quantity}</TableCell>
-                      <TableCell>₹{item.rate.toFixed(2)}</TableCell>
-                      <TableCell>{item.rentalDays}</TableCell>
-                      <TableCell>₹{calculateItemTotal(item).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        {item.quantity}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₹{item.rate.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.rentalDays}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₹{calculateItemTotal(item).toFixed(2)}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -188,30 +234,33 @@ export default function ChallanDetailPage() {
           </div>
 
           <div className="flex justify-end">
-            <div className="space-y-2 w-64">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Subtotal:</span>
-                <span className="font-semibold">
-                  ₹{challan.items.reduce((sum, item) => sum + calculateItemTotal(item), 0).toFixed(2)}
+            <div className="space-y-2 w-56">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span>
+                  ₹
+                  {challan.items
+                    .reduce((s, i) => s + calculateItemTotal(i), 0)
+                    .toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Freight:</span>
-                <span className="font-semibold">₹{challan.freight.toFixed(2)}</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Freight:</span>
+                <span>₹{challan.freight.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-lg font-bold">Total:</span>
-                <span className="text-lg font-bold">₹{total.toFixed(2)}</span>
+              <div className="flex justify-between font-bold border-t pt-2">
+                <span>Total:</span>
+                <span>₹{total.toFixed(2)}</span>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {showEditDialog && (
+      {editOpen && !challan.returned && (
         <ChallanEditDialog
-          open={showEditDialog}
-          onClose={() => setShowEditDialog(false)}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
           challan={challan}
         />
       )}

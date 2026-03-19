@@ -1,4 +1,4 @@
-import type { Client } from '../backend';
+import type { Client } from "../backend";
 
 interface ParsedClientRow {
   rowNumber: number;
@@ -14,7 +14,7 @@ interface ValidationResult {
  * Parse CSV text into client rows
  */
 function parseCSV(text: string): ParsedClientRow[] {
-  const lines = text.split('\n').filter((line) => line.trim());
+  const lines = text.split("\n").filter((line) => line.trim());
   const rows: ParsedClientRow[] = [];
 
   // Skip header row
@@ -24,16 +24,16 @@ function parseCSV(text: string): ParsedClientRow[] {
 
     // Simple CSV parsing (handles quoted values)
     const values: string[] = [];
-    let current = '';
+    let current = "";
     let inQuotes = false;
 
     for (let j = 0; j < line.length; j++) {
       const char = line[j];
       if (char === '"') {
         inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
+      } else if (char === "," && !inQuotes) {
         values.push(current.trim());
-        current = '';
+        current = "";
       } else {
         current += char;
       }
@@ -43,7 +43,7 @@ function parseCSV(text: string): ParsedClientRow[] {
     if (values.length >= 1) {
       rows.push({
         rowNumber: i + 1,
-        name: values[0].replace(/^"|"$/g, ''),
+        name: values[0].replace(/^"|"$/g, ""),
       });
     }
   }
@@ -56,7 +56,7 @@ function parseCSV(text: string): ParsedClientRow[] {
  */
 export function parseAndValidateClientCSV(
   text: string,
-  existingClients: Client[]
+  existingClients: Client[],
 ): ValidationResult {
   const rows = parseCSV(text);
   const valid: Client[] = [];
@@ -67,8 +67,11 @@ export function parseAndValidateClientCSV(
 
   for (const row of rows) {
     // Validate name
-    if (!row.name || row.name.trim() === '') {
-      errors.push({ rowNumber: row.rowNumber, error: 'Client name is required' });
+    if (!row.name || row.name.trim() === "") {
+      errors.push({
+        rowNumber: row.rowNumber,
+        error: "Client name is required",
+      });
       continue;
     }
 

@@ -22,7 +22,7 @@ function stripBOM(text: string): string {
  * Normalize line endings (CRLF → LF)
  */
 function normalizeLineEndings(text: string): string {
-  return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
 /**
@@ -31,8 +31,8 @@ function normalizeLineEndings(text: string): string {
 export function parseCSV(csvText: string): CSVParseResult {
   // Strip BOM and normalize line endings
   const normalized = normalizeLineEndings(stripBOM(csvText.trim()));
-  const lines = normalized.split('\n');
-  
+  const lines = normalized.split("\n");
+
   if (lines.length === 0) {
     return { headers: [], rows: [] };
   }
@@ -53,11 +53,11 @@ export function parseCSV(csvText: string): CSVParseResult {
     // Handle multi-line quoted fields
     let fullLine = line;
     let quoteCount = countUnescapedQuotes(line);
-    
+
     // If odd number of quotes, field spans multiple lines
     while (quoteCount % 2 !== 0 && i + 1 < lines.length) {
       i++;
-      fullLine += '\n' + lines[i];
+      fullLine += `\n${lines[i]}`;
       quoteCount = countUnescapedQuotes(fullLine);
     }
 
@@ -74,13 +74,13 @@ export function parseCSV(csvText: string): CSVParseResult {
  */
 function parseCSVLine(line: string): string[] {
   const fields: string[] = [];
-  let currentField = '';
+  let currentField = "";
   let insideQuotes = false;
   let i = 0;
 
   while (i < line.length) {
     const char = line[i];
-    const nextChar = i + 1 < line.length ? line[i + 1] : '';
+    const nextChar = i + 1 < line.length ? line[i + 1] : "";
 
     if (char === '"') {
       if (insideQuotes && nextChar === '"') {
@@ -88,18 +88,17 @@ function parseCSVLine(line: string): string[] {
         currentField += '"';
         i += 2;
         continue;
-      } else {
-        // Toggle quote state
-        insideQuotes = !insideQuotes;
-        i++;
-        continue;
       }
+      // Toggle quote state
+      insideQuotes = !insideQuotes;
+      i++;
+      continue;
     }
 
-    if (char === ',' && !insideQuotes) {
+    if (char === "," && !insideQuotes) {
       // Field separator
       fields.push(currentField.trim());
-      currentField = '';
+      currentField = "";
       i++;
       continue;
     }

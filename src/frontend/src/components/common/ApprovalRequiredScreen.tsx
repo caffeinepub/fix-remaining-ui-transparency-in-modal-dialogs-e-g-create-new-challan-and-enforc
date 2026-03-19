@@ -1,98 +1,99 @@
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useInternetIdentity } from '../../hooks/useInternetIdentity';
-import { useRequestApproval, useIsCallerApproved } from '../../hooks/useApprovalStatus';
-import { Loader2, Clock, CheckCircle2 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useQueryClient } from "@tanstack/react-query";
+import { CheckCircle, Clock, LogOut, RefreshCw } from "lucide-react";
+import React from "react";
+import { toast } from "sonner";
+import { useRequestApproval } from "../../hooks/useApprovalStatus";
+import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 
-/**
- * Full-page screen for logged-in but unapproved users to request access,
- * view status, or sign out, with auto-refresh of approval status.
- */
 export default function ApprovalRequiredScreen() {
   const { identity, clear } = useInternetIdentity();
-  const { mutate: requestApproval, isPending, isSuccess } = useRequestApproval();
-  const { refetch } = useIsCallerApproved();
   const queryClient = useQueryClient();
+  const {
+    mutate: requestApproval,
+    isPending,
+    isSuccess,
+  } = useRequestApproval();
 
-  // Auto-refresh approval status every 5 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refetch();
-    }, 5000);
+  const principal = identity?.getPrincipal().toString() || "";
 
-    return () => clearInterval(interval);
-  }, [refetch]);
+  const handleRequest = () => {
+    requestApproval(undefined, {
+      onSuccess: () =>
+        toast.success(
+          "Approval request submitted! Please wait for admin approval.",
+        ),
+      onError: (e) => toast.error(`Failed to request approval: ${e.message}`),
+    });
+  };
 
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     await clear();
     queryClient.clear();
   };
 
-  const principalId = identity?.getPrincipal().toString() || '';
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ background: "var(--sidebar-bg)" }}
+    >
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-primary mb-2">RENTIQ</CardTitle>
-          <CardDescription>Approval Required</CardDescription>
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ background: "var(--sidebar-accent)" }}
+          >
+            <Clock
+              className="w-8 h-8"
+              style={{ color: "var(--sidebar-active)" }}
+            />
+          </div>
+          <CardTitle className="text-xl">Access Pending</CardTitle>
+          <CardDescription>
+            Your account requires admin approval to access RentIQ Udaipur.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Alert>
-            <Clock className="h-4 w-4" />
-            <AlertDescription>
-              Your account is pending approval. An administrator will review your request shortly.
-            </AlertDescription>
-          </Alert>
-
-          {isSuccess && (
-            <Alert>
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>
-                Approval request submitted successfully. Please wait for administrator approval.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="bg-muted p-3 rounded-md">
-            <p className="text-xs text-muted-foreground mb-1">Your Principal ID:</p>
-            <p className="text-xs font-mono break-all">{principalId}</p>
+          <div className="bg-muted rounded-lg p-3">
+            <p className="text-xs text-muted-foreground mb-1">
+              Your Principal ID
+            </p>
+            <p className="text-xs font-mono break-all">{principal}</p>
           </div>
 
-          <div className="space-y-2">
+          {isSuccess ? (
+            <div className="flex items-center gap-2 text-green-600 text-sm p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              <span>Request submitted! Please wait for admin approval.</span>
+            </div>
+          ) : (
             <Button
-              onClick={() => requestApproval()}
-              disabled={isPending || isSuccess}
+              onClick={handleRequest}
+              disabled={isPending}
               className="w-full"
-              variant="default"
             >
               {isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />{" "}
                   Requesting...
                 </>
-              ) : isSuccess ? (
-                'Request Submitted'
               ) : (
-                'Request Approval'
+                "Request Access"
               )}
             </Button>
+          )}
 
-            <Button
-              onClick={handleSignOut}
-              variant="outline"
-              className="w-full"
-            >
-              Sign Out
-            </Button>
-          </div>
-
-          <p className="text-xs text-center text-muted-foreground">
-            This page will automatically update when your approval is granted.
-          </p>
+          <Button variant="outline" onClick={handleLogout} className="w-full">
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out
+          </Button>
         </CardContent>
       </Card>
     </div>

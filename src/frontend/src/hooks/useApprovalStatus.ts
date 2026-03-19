@@ -1,60 +1,92 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useActor } from './useActor';
+import type { Principal } from "@dfinity/principal";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ApprovalStatus } from "../backend";
+import { useActor } from "./useActor";
 
-export const APPROVAL_QUERY_KEYS = {
-  isCallerApproved: ['isCallerApproved'],
-  isCallerAdmin: ['isCallerAdmin'],
-};
+export function useApprovalStatus() {
+  const { actor, isFetching: actorFetching } = useActor();
 
-/**
- * Hook to check if current user is approved.
- */
-export function useIsCallerApproved() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<boolean>({
-    queryKey: APPROVAL_QUERY_KEYS.isCallerApproved,
+  const query = useQuery<boolean>({
+    queryKey: ["approvalStatus"],
     queryFn: async () => {
       if (!actor) return false;
       return actor.isCallerApproved();
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
-    refetchInterval: 5000, // Refetch every 5 seconds for pending users
+    enabled: !!actor && !actorFetching,
+    refetchInterval: 10_000,
+    retry: 2,
   });
+
+  return {
+    ...query,
+    isApproved: query.data ?? false,
+    isLoading: actorFetching || query.isLoading,
+    isFetched: !!actor && query.isFetched,
+  };
 }
 
-/**
- * Hook to check if current user is admin.
- */
 export function useIsCallerAdmin() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
 
-  return useQuery<boolean>({
-    queryKey: APPROVAL_QUERY_KEYS.isCallerAdmin,
+  const query = useQuery<boolean>({
+    queryKey: ["isCallerAdmin"],
     queryFn: async () => {
       if (!actor) return false;
       return actor.isCallerAdmin();
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor && !actorFetching,
+    retry: 2,
   });
+
+  return {
+    ...query,
+    isAdmin: query.data ?? false,
+    isLoading: actorFetching || query.isLoading,
+  };
 }
 
-/**
- * Mutation hook to request approval.
- */
 export function useRequestApproval() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async () => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Not connected");
       return actor.requestApproval();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: APPROVAL_QUERY_KEYS.isCallerApproved });
+      queryClient.invalidateQueries({ queryKey: ["approvalStatus"] });
     },
+  });
+}
+
+export function useSetApproval() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      user,
+      status,
+    }: { user: Principal; status: ApprovalStatus }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.setApproval(user, status);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["approvals"] });
+    },
+  });
+}
+
+export function useListApprovals() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery({
+    queryKey: ["approvals"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.listApprovals();
+    },
+    enabled: !!actor && !actorFetching,
   });
 }

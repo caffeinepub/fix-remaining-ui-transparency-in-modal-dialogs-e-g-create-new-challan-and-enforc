@@ -1,5 +1,5 @@
-import { parseDateOnly } from './dates';
-import type { Challan, ChallanItem } from '../backend';
+import type { Challan, ChallanItem } from "../backend";
+import { parseDateOnly } from "./dates";
 
 interface ParsedRow {
   challanId: string;
@@ -20,7 +20,7 @@ interface ParseResult {
 }
 
 export function parseChallanCSV(csvText: string): ParseResult {
-  const lines = csvText.trim().split('\n');
+  const lines = csvText.trim().split("\n");
   const errors: Array<{ row: number; message: string }> = [];
   const parsedRows: ParsedRow[] = [];
 
@@ -28,22 +28,22 @@ export function parseChallanCSV(csvText: string): ParseResult {
     return {
       totalRows: 0,
       validChallans: [],
-      errors: [{ row: 0, message: 'File is empty' }],
+      errors: [{ row: 0, message: "File is empty" }],
     };
   }
 
   // Parse header
-  const header = lines[0].split(',').map((h) => h.trim());
+  const header = lines[0].split(",").map((h) => h.trim());
   const expectedHeaders = [
-    'Challan ID',
-    'Client Name',
-    'Venue',
-    'Item Name',
-    'Quantity',
-    'Rate',
-    'Start Date',
-    'End Date',
-    'Freight',
+    "Challan ID",
+    "Client Name",
+    "Venue",
+    "Item Name",
+    "Quantity",
+    "Rate",
+    "Start Date",
+    "End Date",
+    "Freight",
   ];
 
   const missingHeaders = expectedHeaders.filter((h) => !header.includes(h));
@@ -51,32 +51,37 @@ export function parseChallanCSV(csvText: string): ParseResult {
     return {
       totalRows: 0,
       validChallans: [],
-      errors: [{ row: 1, message: `Missing required columns: ${missingHeaders.join(', ')}` }],
+      errors: [
+        {
+          row: 1,
+          message: `Missing required columns: ${missingHeaders.join(", ")}`,
+        },
+      ],
     };
   }
 
-  const challanIdIndex = header.indexOf('Challan ID');
-  const clientNameIndex = header.indexOf('Client Name');
-  const venueIndex = header.indexOf('Venue');
-  const itemNameIndex = header.indexOf('Item Name');
-  const quantityIndex = header.indexOf('Quantity');
-  const rateIndex = header.indexOf('Rate');
-  const startDateIndex = header.indexOf('Start Date');
-  const endDateIndex = header.indexOf('End Date');
-  const freightIndex = header.indexOf('Freight');
+  const challanIdIndex = header.indexOf("Challan ID");
+  const clientNameIndex = header.indexOf("Client Name");
+  const venueIndex = header.indexOf("Venue");
+  const itemNameIndex = header.indexOf("Item Name");
+  const quantityIndex = header.indexOf("Quantity");
+  const rateIndex = header.indexOf("Rate");
+  const startDateIndex = header.indexOf("Start Date");
+  const endDateIndex = header.indexOf("End Date");
+  const freightIndex = header.indexOf("Freight");
 
   // Parse data rows
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
 
-    const values = line.split(',').map((v) => v.trim());
+    const values = line.split(",").map((v) => v.trim());
     const rowNumber = i + 1;
 
     try {
       const challanId = values[challanIdIndex];
       const clientName = values[clientNameIndex];
-      const venue = values[venueIndex] || ''; // Allow blank venue
+      const venue = values[venueIndex] || ""; // Allow blank venue
       const itemName = values[itemNameIndex];
       const quantityStr = values[quantityIndex];
       const rateStr = values[rateIndex];
@@ -85,52 +90,67 @@ export function parseChallanCSV(csvText: string): ParseResult {
       const freightStr = values[freightIndex];
 
       if (!challanId) {
-        errors.push({ row: rowNumber, message: 'Missing Challan ID' });
+        errors.push({ row: rowNumber, message: "Missing Challan ID" });
         continue;
       }
 
       if (!clientName) {
-        errors.push({ row: rowNumber, message: 'Missing Client Name' });
+        errors.push({ row: rowNumber, message: "Missing Client Name" });
         continue;
       }
 
       if (!itemName) {
-        errors.push({ row: rowNumber, message: 'Missing Item Name' });
+        errors.push({ row: rowNumber, message: "Missing Item Name" });
         continue;
       }
 
-      const quantity = parseFloat(quantityStr);
-      if (isNaN(quantity) || quantity < 0) {
-        errors.push({ row: rowNumber, message: 'Invalid Quantity (must be non-negative)' });
+      const quantity = Number.parseFloat(quantityStr);
+      if (Number.isNaN(quantity) || quantity < 0) {
+        errors.push({
+          row: rowNumber,
+          message: "Invalid Quantity (must be non-negative)",
+        });
         continue;
       }
 
-      const rate = parseFloat(rateStr);
-      if (isNaN(rate) || rate < 0) {
-        errors.push({ row: rowNumber, message: 'Invalid Rate (must be non-negative)' });
+      const rate = Number.parseFloat(rateStr);
+      if (Number.isNaN(rate) || rate < 0) {
+        errors.push({
+          row: rowNumber,
+          message: "Invalid Rate (must be non-negative)",
+        });
         continue;
       }
 
       const startDate = parseDateOnly(startDateStr);
       if (!startDate) {
-        errors.push({ row: rowNumber, message: `Invalid Start Date format: ${startDateStr}` });
+        errors.push({
+          row: rowNumber,
+          message: `Invalid Start Date format: ${startDateStr}`,
+        });
         continue;
       }
 
       const endDate = parseDateOnly(endDateStr);
       if (!endDate) {
-        errors.push({ row: rowNumber, message: `Invalid End Date format: ${endDateStr}` });
+        errors.push({
+          row: rowNumber,
+          message: `Invalid End Date format: ${endDateStr}`,
+        });
         continue;
       }
 
       if (endDate <= startDate) {
-        errors.push({ row: rowNumber, message: 'End Date must be after Start Date' });
+        errors.push({
+          row: rowNumber,
+          message: "End Date must be after Start Date",
+        });
         continue;
       }
 
-      const freight = parseFloat(freightStr);
-      if (isNaN(freight) || freight < 0) {
-        errors.push({ row: rowNumber, message: 'Invalid Freight' });
+      const freight = Number.parseFloat(freightStr);
+      if (Number.isNaN(freight) || freight < 0) {
+        errors.push({ row: rowNumber, message: "Invalid Freight" });
         continue;
       }
 
@@ -146,7 +166,10 @@ export function parseChallanCSV(csvText: string): ParseResult {
         freight,
       });
     } catch (error) {
-      errors.push({ row: rowNumber, message: `Parse error: ${error instanceof Error ? error.message : 'Unknown error'}` });
+      errors.push({
+        row: rowNumber,
+        message: `Parse error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      });
     }
   }
 
@@ -164,43 +187,50 @@ export function parseChallanCSV(csvText: string): ParseResult {
     const itemNames = rows.map((r) => r.itemName);
     const uniqueNames = new Set(itemNames);
     if (itemNames.length !== uniqueNames.size) {
-      const duplicates = itemNames.filter((name, index) => itemNames.indexOf(name) !== index);
+      const duplicates = itemNames.filter(
+        (name, index) => itemNames.indexOf(name) !== index,
+      );
       errors.push({
         row: 0,
-        message: `Challan ${challanId} has duplicate items: ${duplicates.join(', ')}`,
+        message: `Challan ${challanId} has duplicate items: ${duplicates.join(", ")}`,
       });
       challanMap.delete(challanId);
     }
   }
 
   // Convert to Challan objects
-  const validChallans: Challan[] = Array.from(challanMap.entries()).map(([challanId, rows]) => {
-    const firstRow = rows[0];
-    const numberOfDays = Math.ceil((firstRow.endDate.getTime() - firstRow.startDate.getTime()) / (1000 * 60 * 60 * 24));
+  const validChallans: Challan[] = Array.from(challanMap.entries()).map(
+    ([challanId, rows]) => {
+      const firstRow = rows[0];
+      const numberOfDays = Math.ceil(
+        (firstRow.endDate.getTime() - firstRow.startDate.getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
 
-    const items: ChallanItem[] = rows.map((row) => ({
-      itemName: row.itemName,
-      quantity: row.quantity,
-      rate: row.rate,
-      rentalDays: numberOfDays,
-    }));
+      const items: ChallanItem[] = rows.map((row) => ({
+        itemName: row.itemName,
+        quantity: row.quantity,
+        rate: row.rate,
+        rentalDays: numberOfDays,
+      }));
 
-    const rentDate = BigInt(firstRow.startDate.getTime() * 1_000_000);
-    const creationDate = BigInt(Date.now() * 1_000_000);
+      const rentDate = BigInt(firstRow.startDate.getTime() * 1_000_000);
+      const creationDate = BigInt(Date.now() * 1_000_000);
 
-    return {
-      id: challanId,
-      clientName: firstRow.clientName,
-      venue: firstRow.venue,
-      items,
-      freight: firstRow.freight,
-      numberOfDays,
-      rentDate,
-      site: '', // Default empty site
-      creationDate,
-      returned: false,
-    };
-  });
+      return {
+        id: challanId,
+        clientName: firstRow.clientName,
+        venue: firstRow.venue,
+        items,
+        freight: firstRow.freight,
+        numberOfDays,
+        rentDate,
+        site: "", // Default empty site
+        creationDate,
+        returned: false,
+      };
+    },
+  );
 
   return {
     totalRows: lines.length - 1,
@@ -211,7 +241,7 @@ export function parseChallanCSV(csvText: string): ParseResult {
 
 export function parseAndValidateChallanCSV(
   csvText: string,
-  existingChallans: Challan[]
+  existingChallans: Challan[],
 ): {
   valid: Challan[];
   errors: Array<{ challanId: string; rowNumber: number; error: string }>;
@@ -219,12 +249,13 @@ export function parseAndValidateChallanCSV(
   const parseResult = parseChallanCSV(csvText);
   const existingIds = new Set(existingChallans.map((c) => c.id));
 
-  const errors: Array<{ challanId: string; rowNumber: number; error: string }> = [];
+  const errors: Array<{ challanId: string; rowNumber: number; error: string }> =
+    [];
 
   // Convert parse errors to validation errors
   for (const err of parseResult.errors) {
     errors.push({
-      challanId: '',
+      challanId: "",
       rowNumber: err.row,
       error: err.message,
     });

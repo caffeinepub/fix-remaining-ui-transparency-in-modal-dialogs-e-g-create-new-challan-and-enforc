@@ -15,6 +15,7 @@ export type ApprovalStatus = { 'pending' : null } |
   { 'rejected' : null };
 export interface BuildMetadata {
   'gitCommitHash' : string,
+  'isTestEnv' : boolean,
   'buildTime' : bigint,
   'canisterId' : string,
 }
@@ -86,6 +87,7 @@ export interface PettyCash {
   'createdAt' : bigint,
   'transferFromCashEquivalents' : number,
   'staffAdvance' : number,
+  'cashReceivedAuto' : number,
   'closingBalance' : number,
   'openingBalance' : number,
   'handoverToMd' : number,
@@ -109,6 +111,7 @@ export interface UserApprovalInfo {
   'status' : ApprovalStatus,
   'principal' : Principal,
 }
+export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -159,10 +162,9 @@ export interface _SERVICE {
       number,
       number,
       number,
-      number,
-      number,
       Array<PettyCashCategory>,
       string,
+      number,
       bigint,
     ],
     undefined
@@ -220,6 +222,7 @@ export interface _SERVICE {
     Array<PettyCashAttachment>
   >,
   'getBuildMetadata' : ActorMethod<[], BuildMetadata>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getChallansByClient' : ActorMethod<[string], Array<Challan>>,
   'getChallansByDateRange' : ActorMethod<[bigint, bigint], Array<Challan>>,
@@ -227,6 +230,7 @@ export interface _SERVICE {
   'getPaymentsByClient' : ActorMethod<[string], Array<Payment>>,
   'getPaymentsByDateRange' : ActorMethod<[bigint, bigint], Array<Payment>>,
   'getPettyCashByDateRange' : ActorMethod<[bigint, bigint], Array<PettyCash>>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'healthCheck' : ActorMethod<[], bigint>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isCallerApproved' : ActorMethod<[], boolean>,
@@ -238,6 +242,7 @@ export interface _SERVICE {
   >,
   'requestApproval' : ActorMethod<[], undefined>,
   'revertChallanToActive' : ActorMethod<[string], undefined>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setApproval' : ActorMethod<[Principal, ApprovalStatus], undefined>,
   'updateChallan' : ActorMethod<
     [
@@ -262,10 +267,9 @@ export interface _SERVICE {
       number,
       number,
       number,
-      number,
-      number,
       Array<PettyCashCategory>,
       string,
+      number,
     ],
     undefined
   >,

@@ -1,94 +1,150 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useInventory, useDashboardMetrics } from '../hooks/useQueries';
-import { DollarSign, FileText, TrendingUp, Calendar, Package, AlertCircle, Wallet, CreditCard } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Calendar,
+  CalendarClock,
+  Clock,
+  FileText,
+  IndianRupee,
+  TrendingUp,
+} from "lucide-react";
+import React from "react";
+import type { PettyCash, PettyCashWithAttachments } from "../backend";
+import { useChallans, usePayments, usePettyCash } from "../hooks/useQueries";
+import {
+  type PeriodMetrics,
+  calculateDashboardMetrics,
+} from "../utils/dashboardMetrics";
+
+function fmt(n: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+function MetricCard({
+  title,
+  value,
+  icon: Icon,
+  color,
+}: {
+  title: string;
+  value: string;
+  icon: React.ElementType;
+  color: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+              {title}
+            </p>
+            <p className="text-xl font-bold mt-1 truncate">{value}</p>
+          </div>
+          <div
+            className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ml-3 ${color}`}
+          >
+            <Icon className="w-4 h-4" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PeriodSection({
+  title,
+  metrics,
+  icon: Icon,
+}: {
+  title: string;
+  metrics: PeriodMetrics;
+  icon: React.ElementType;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Icon className="w-4 h-4 text-muted-foreground" />
+        <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+          {title}
+        </h3>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <MetricCard
+          title="Challans"
+          value={String(metrics.challanCount)}
+          icon={FileText}
+          color="bg-primary/10 text-primary"
+        />
+        <MetricCard
+          title="Total Rent"
+          value={fmt(metrics.totalRent)}
+          icon={IndianRupee}
+          color="bg-green-100 text-green-700"
+        />
+        <MetricCard
+          title="Cash Received"
+          value={fmt(metrics.cashReceived)}
+          icon={IndianRupee}
+          color="bg-amber-100 text-amber-700"
+        />
+        <MetricCard
+          title="Online Received"
+          value={fmt(metrics.onlineReceived)}
+          icon={TrendingUp}
+          color="bg-sky-100 text-sky-700"
+        />
+        <MetricCard
+          title="Total Received"
+          value={fmt(metrics.totalReceived)}
+          icon={IndianRupee}
+          color="bg-green-100 text-green-700"
+        />
+        <MetricCard
+          title="Pending"
+          value={fmt(metrics.pendingAmount)}
+          icon={Clock}
+          color="bg-red-100 text-red-700"
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
-  const { data: inventory, isLoading: inventoryLoading } = useInventory();
-  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
+  const { data: challans = [], isLoading: challansLoading } = useChallans();
+  const { data: payments = [], isLoading: paymentsLoading } = usePayments();
+  const { data: pettyCashWithAttachments = [], isLoading: pcLoading } =
+    usePettyCash();
 
-  const isLoading = inventoryLoading || metricsLoading;
+  const isLoading = challansLoading || paymentsLoading || pcLoading;
 
-  // Helper to format currency
-  const formatCurrency = (value: number) => `₹${value.toFixed(2)}`;
+  const pettyCash = React.useMemo(
+    () =>
+      (pettyCashWithAttachments as PettyCashWithAttachments[]).map(
+        (p) => p.pettyCash,
+      ),
+    [pettyCashWithAttachments],
+  );
 
-  // Helper to format count
-  const formatCount = (value: number) => value.toString();
-
-  // Helper to get color classes based on metric type
-  const getMetricColorClasses = (label: string) => {
-    if (label.includes('Revenue') && !label.includes('Future')) {
-      return 'text-green-700 bg-green-50 border-green-200';
-    }
-    if (label.includes('Pending')) {
-      return 'text-red-700 bg-red-50 border-red-200';
-    }
-    if (label.includes('Future')) {
-      return 'text-blue-700 bg-blue-50 border-blue-200';
-    }
-    return 'text-gray-700 bg-gray-50 border-gray-200';
-  };
-
-  const metricsData = [
-    {
-      title: 'Daily Metrics',
-      items: [
-        { label: 'Total Revenue', value: metrics?.daily.totalRevenue || 0, type: 'currency', icon: DollarSign },
-        { label: 'Total Challan Count', value: metrics?.daily.totalChallanCount || 0, type: 'count', icon: FileText },
-        { label: 'Cash Received', value: metrics?.daily.cashReceived || 0, type: 'currency', icon: Wallet },
-        { label: 'Online Received', value: metrics?.daily.onlineReceived || 0, type: 'currency', icon: CreditCard },
-        { label: 'Total Received', value: metrics?.daily.totalReceived || 0, type: 'currency', icon: TrendingUp },
-        { label: 'Pending Amount', value: metrics?.daily.pendingAmount || 0, type: 'currency', icon: AlertCircle },
-        { label: 'Cash in Hand', value: metrics?.daily.cashInHand || 0, type: 'currency', icon: Wallet },
-        { label: 'Total Expenses (Expenses + Staff)', value: metrics?.daily.totalExpensesExpensesPlusStaff || 0, type: 'currency', icon: DollarSign },
-        { label: 'Returned Challans', value: metrics?.daily.returnedChallans || 0, type: 'count', icon: Package },
-      ],
-    },
-    {
-      title: 'Monthly Metrics',
-      items: [
-        { label: 'Total Revenue', value: metrics?.monthly.totalRevenue || 0, type: 'currency', icon: DollarSign },
-        { label: 'Total Challan Count', value: metrics?.monthly.totalChallanCount || 0, type: 'count', icon: FileText },
-        { label: 'Cash Received', value: metrics?.monthly.cashReceived || 0, type: 'currency', icon: Wallet },
-        { label: 'Online Received', value: metrics?.monthly.onlineReceived || 0, type: 'currency', icon: CreditCard },
-        { label: 'Total Received', value: metrics?.monthly.totalReceived || 0, type: 'currency', icon: TrendingUp },
-        { label: 'Pending Amount', value: metrics?.monthly.pendingAmount || 0, type: 'currency', icon: AlertCircle },
-        { label: 'Cash in Hand', value: metrics?.monthly.cashInHand || 0, type: 'currency', icon: Wallet },
-        { label: 'Total Expenses (Expenses + Staff)', value: metrics?.monthly.totalExpensesExpensesPlusStaff || 0, type: 'currency', icon: DollarSign },
-        { label: 'Returned Challans', value: metrics?.monthly.returnedChallans || 0, type: 'count', icon: Package },
-      ],
-    },
-    {
-      title: 'All-Time Metrics',
-      items: [
-        { label: 'Total Revenue', value: metrics?.allTime.totalRevenue || 0, type: 'currency', icon: DollarSign },
-        { label: 'Total Challan Count', value: metrics?.allTime.totalChallanCount || 0, type: 'count', icon: FileText },
-        { label: 'Cash Received', value: metrics?.allTime.cashReceived || 0, type: 'currency', icon: Wallet },
-        { label: 'Online Received', value: metrics?.allTime.onlineReceived || 0, type: 'currency', icon: CreditCard },
-        { label: 'Total Received', value: metrics?.allTime.totalReceived || 0, type: 'currency', icon: TrendingUp },
-        { label: 'Pending Amount', value: metrics?.allTime.pendingAmount || 0, type: 'currency', icon: AlertCircle },
-        { label: 'Cash in Hand', value: metrics?.allTime.cashInHand || 0, type: 'currency', icon: Wallet },
-        { label: 'Total Expenses (Expenses + Staff)', value: metrics?.allTime.totalExpensesExpensesPlusStaff || 0, type: 'currency', icon: DollarSign },
-        { label: 'Returned Challans', value: metrics?.allTime.returnedChallans || 0, type: 'count', icon: Package },
-      ],
-    },
-  ];
+  const metrics = React.useMemo(
+    () => calculateDashboardMetrics(challans, payments, pettyCash),
+    [challans, payments, pettyCash],
+  );
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="h-8 w-24 animate-pulse rounded bg-gray-200" />
-                  <div className="h-8 w-24 animate-pulse rounded bg-gray-200" />
-                </div>
-              </CardContent>
-            </Card>
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length skeleton list
+            <Skeleton key={i} className="h-24" />
           ))}
         </div>
       </div>
@@ -96,108 +152,65 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-600 mt-1">Overview of your rental business metrics</p>
+    <div className="p-4 md:p-6 space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {new Date().toLocaleDateString("en-IN", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+        </div>
+        <Badge variant="outline" className="text-xs">
+          {challans.length} Total Challans
+        </Badge>
       </div>
 
-      {/* Future Metrics Section - Separate from period metrics */}
-      <Card className="border-blue-300 bg-blue-50">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-blue-900 flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Future Metrics
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex items-center justify-between rounded-md border border-blue-200 bg-white px-3 py-2">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-blue-700" />
-              <span className="text-sm font-medium text-blue-900">Future Challans</span>
+      {/* Future Bookings */}
+      {metrics.future.futureBookingsCount > 0 && (
+        <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <CalendarClock className="w-4 h-4" />
+              Future Bookings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Upcoming Challans
+                </p>
+                <p className="text-2xl font-bold">
+                  {metrics.future.futureBookingsCount}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Future Revenue</p>
+                <p className="text-2xl font-bold">
+                  {fmt(metrics.future.futureRevenue)}
+                </p>
+              </div>
             </div>
-            <span className="text-base font-bold text-blue-900">
-              {formatCount(metrics?.future.futureChallans || 0)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between rounded-md border border-blue-200 bg-white px-3 py-2">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-blue-700" />
-              <span className="text-sm font-medium text-blue-900">Future Revenue</span>
-            </div>
-            <span className="text-base font-bold text-blue-900">
-              {formatCurrency(metrics?.future.futureRevenue || 0)}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Period-based Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {metricsData.map((section) => (
-          <Card key={section.title}>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">{section.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const displayValue = item.type === 'currency' 
-                  ? formatCurrency(item.value) 
-                  : formatCount(item.value);
-                const colorClasses = getMetricColorClasses(item.label);
-                
-                return (
-                  <div 
-                    key={item.label} 
-                    className={`flex items-center justify-between rounded-md border px-3 py-2 transition-colors ${colorClasses}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Icon className="h-4 w-4" />
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </div>
-                    <span className="text-base font-bold">
-                      {displayValue}
-                    </span>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventory Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border border-gray-200 p-4">
-              <p className="text-sm text-gray-600">Total Items</p>
-              <p className="text-2xl font-bold text-gray-900">{inventory?.length || 0}</p>
-            </div>
-            <div className="rounded-lg border border-gray-200 p-4">
-              <p className="text-sm text-gray-600">Total Quantity</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {inventory?.reduce((sum, item) => sum + item.totalQuantity, 0) || 0}
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-200 p-4">
-              <p className="text-sm text-gray-600">Available</p>
-              <p className="text-2xl font-bold text-green-600">
-                {inventory?.reduce((sum, item) => sum + item.availableQuantity, 0) || 0}
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-200 p-4">
-              <p className="text-sm text-gray-600">Issued</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {inventory?.reduce((sum, item) => sum + item.issuedQuantity, 0) || 0}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <PeriodSection title="Today" metrics={metrics.daily} icon={Calendar} />
+      <PeriodSection
+        title="This Month"
+        metrics={metrics.monthly}
+        icon={Calendar}
+      />
+      <PeriodSection
+        title="All Time"
+        metrics={metrics.allTime}
+        icon={FileText}
+      />
     </div>
   );
 }

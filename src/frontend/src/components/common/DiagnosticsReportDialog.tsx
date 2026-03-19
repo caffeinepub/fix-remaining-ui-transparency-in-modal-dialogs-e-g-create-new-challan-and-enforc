@@ -1,37 +1,40 @@
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Copy, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { formatDiagnosticsReportAsText } from '../../utils/diagnosticsReport';
-import { clearDiagnosticLog } from '../../utils/runtimeDiagnostics';
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Copy, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { formatDiagnosticsReportAsText } from "../../utils/diagnosticsReport";
+import { clearDiagnosticLog } from "../../utils/runtimeDiagnostics";
 
 interface DiagnosticsReportDialogProps {
   open: boolean;
   onClose: () => void;
 }
 
-export default function DiagnosticsReportDialog({ open, onClose }: DiagnosticsReportDialogProps) {
+export default function DiagnosticsReportDialog({
+  open,
+  onClose,
+}: DiagnosticsReportDialogProps) {
   const report = formatDiagnosticsReportAsText();
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(report);
-      toast.success('Diagnostics report copied to clipboard');
-    } catch (error) {
-      toast.error('Failed to copy to clipboard');
+      toast.success("Diagnostics report copied to clipboard");
+    } catch (_error) {
+      toast.error("Failed to copy to clipboard");
     }
   };
 
   const handleClear = () => {
     clearDiagnosticLog();
-    toast.success('Diagnostics log cleared');
+    toast.success("Diagnostics log cleared");
     onClose();
   };
 

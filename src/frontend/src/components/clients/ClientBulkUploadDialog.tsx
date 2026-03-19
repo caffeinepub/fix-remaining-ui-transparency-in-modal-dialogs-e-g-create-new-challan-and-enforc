@@ -1,258 +1,271 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertCircle, CheckCircle2, Download, Upload } from 'lucide-react';
-import { useBulkCreateClients } from '../../hooks/useQueries';
-import { downloadClientTemplate } from '../../utils/exportToCSV';
-import { dateToNano } from '../../utils/dates';
-import type { Client } from '../../backend';
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Download, Loader2, Upload } from "lucide-react";
+import type React from "react";
+import { useRef, useState } from "react";
+import type { Client } from "../../backend";
+import { useActor } from "../../hooks/useActor";
+import { useInternetIdentity } from "../../hooks/useInternetIdentity";
+import { useBulkCreateClients } from "../../hooks/useQueries";
+import { parseAndValidateClientCSV } from "../../utils/clientImport";
+import { downloadClientTemplate } from "../../utils/exportToCSV";
 
 interface ClientBulkUploadDialogProps {
   open: boolean;
   onClose: () => void;
+  existingClients: Client[];
 }
 
-export default function ClientBulkUploadDialog({ open, onClose }: ClientBulkUploadDialogProps) {
-  const bulkCreate = useBulkCreateClients();
+interface UploadResult {
+  name: string;
+  success: boolean;
+  error?: string;
+}
+
+export function ClientBulkUploadDialog({
+  open,
+  onClose,
+  existingClients,
+}: ClientBulkUploadDialogProps) {
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const isActorReady = !!actor && !isFetching;
+  const isAuthenticated = !!identity;
+
   const [file, setFile] = useState<File | null>(null);
-  const [parsedData, setParsedData] = useState<Client[] | null>(null);
-  const [parseErrors, setParseErrors] = useState<Array<{ row: number; message: string }>>([]);
-  const [uploadResults, setUploadResults] = useState<{
-    successCount: number;
-    failures: Array<{ id: string; error: string }>;
-  } | null>(null);
+  const [preview, setPreview] = useState<Client[]>([]);
+  const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadDone, setUploadDone] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
-    setFile(selectedFile);
-    setParsedData(null);
-    setParseErrors([]);
-    setUploadResults(null);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.trim().split('\n');
-      const errors: Array<{ row: number; message: string }> = [];
-      const clients: Client[] = [];
-
-      if (lines.length === 0) {
-        setParseErrors([{ row: 0, message: 'File is empty' }]);
-        return;
-      }
-
-      // Parse header
-      const header = lines[0].split(',').map((h) => h.trim());
-      if (!header.includes('Client Name')) {
-        setParseErrors([{ row: 1, message: 'Missing required column: Client Name' }]);
-        return;
-      }
-
-      const nameIndex = header.indexOf('Client Name');
-
-      // Parse data rows
-      const seenNames = new Set<string>();
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        const values = line.split(',').map((v) => v.trim());
-        const rowNumber = i + 1;
-
-        const name = values[nameIndex];
-
-        if (!name) {
-          errors.push({ row: rowNumber, message: 'Missing Client Name' });
-          continue;
-        }
-
-        if (seenNames.has(name)) {
-          errors.push({ row: rowNumber, message: `Duplicate client name: ${name}` });
-          continue;
-        }
-
-        seenNames.add(name);
-        clients.push({
-          name,
-          createdAt: dateToNano(new Date()),
-        });
-      }
-
-      if (errors.length > 0) {
-        setParseErrors(errors);
-        setParsedData(null);
-      } else {
-        setParseErrors([]);
-        setParsedData(clients);
-      }
-    };
-    reader.readAsText(selectedFile);
-  };
-
-  const handleImport = async () => {
-    if (!parsedData) return;
-
-    try {
-      const results = await bulkCreate.mutateAsync(parsedData);
-      const successCount = results.filter((r) => r.success).length;
-      const failures = results
-        .filter((r) => !r.success)
-        .map((r) => ({ id: r.name, error: r.error || 'Unknown error' }));
-
-      setUploadResults({ successCount, failures });
-    } catch (error) {
-      console.error('Bulk upload error:', error);
-      setUploadResults({
-        successCount: 0,
-        failures: [{ id: 'all', error: String(error) }],
-      });
-    }
-  };
-
-  const handleReset = () => {
-    setFile(null);
-    setParsedData(null);
-    setParseErrors([]);
-    setUploadResults(null);
-  };
+  const bulkCreateMutation = useBulkCreateClients();
 
   const handleClose = () => {
-    handleReset();
+    setFile(null);
+    setPreview([]);
+    setParseErrors([]);
+    setUploadResults([]);
+    setIsUploading(false);
+    setUploadDone(false);
     onClose();
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setParseErrors([]);
+    setPreview([]);
+    setUploadResults([]);
+    setUploadDone(false);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const result = parseAndValidateClientCSV(text, existingClients);
+      if (result.errors.length > 0) {
+        setParseErrors(
+          result.errors.map((e) =>
+            e.rowNumber > 0 ? `Row ${e.rowNumber}: ${e.error}` : e.error,
+          ),
+        );
+      }
+      setPreview(result.valid);
+    };
+    reader.readAsText(f);
+  };
+
+  const handleUpload = async () => {
+    if (!isAuthenticated) {
+      setParseErrors(["Please sign in to upload clients."]);
+      return;
+    }
+    if (!isActorReady) {
+      setParseErrors([
+        "Backend is connecting. Please wait a moment and try again.",
+      ]);
+      return;
+    }
+    if (preview.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const results = await bulkCreateMutation.mutateAsync(preview);
+      setUploadResults(
+        results.map((r) => ({
+          name: r.name,
+          success: r.success,
+          error: r.error,
+        })),
+      );
+      setUploadDone(true);
+    } catch (err: any) {
+      setParseErrors([err?.message || "Upload failed"]);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const successCount = uploadResults.filter((r) => r.success).length;
+  const failCount = uploadResults.filter((r) => !r.success).length;
+
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="bg-background opacity-100 max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleClose();
+      }}
+    >
+      <DialogContent className="bg-background opacity-100 sm:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bulk Upload Clients</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-1 space-y-4">
-          {!uploadResults ? (
-            <>
-              <div className="space-y-4">
-                <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 space-y-2">
-                  <h4 className="font-semibold text-blue-900 text-sm">CSV Format</h4>
-                  <p className="text-xs text-blue-800">
-                    Client Name
-                  </p>
-                  <p className="text-xs text-blue-800 mt-2">
-                    This will create new records in bulk. Duplicate client names and empty names will be rejected.
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={downloadClientTemplate}
-                    className="mt-2"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download Template
-                  </Button>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={downloadClientTemplate}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download Template
+            </Button>
+          </div>
+
+          {!uploadDone && (
+            <div className="space-y-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {file ? file.name : "Select CSV File"}
+              </Button>
+            </div>
+          )}
+
+          {parseErrors.length > 0 && (
+            <div className="text-sm text-destructive bg-destructive/10 rounded p-3 space-y-1">
+              {parseErrors.map((e, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: error list is static after parse
+                <div key={i} className="break-words">
+                  {e}
                 </div>
+              ))}
+            </div>
+          )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="file">Select CSV File</Label>
-                  <Input
-                    id="file"
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileSelect}
-                  />
-                </div>
-
-                {parsedData && parsedData.length > 0 && (
-                  <Alert className="border-green-200 bg-green-50">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <AlertTitle className="text-green-800">
-                      {parsedData.length} Valid Client{parsedData.length !== 1 ? 's' : ''}
-                    </AlertTitle>
-                    <AlertDescription className="text-green-700">
-                      Ready to upload.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {parseErrors.length > 0 && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{parseErrors.length} Error{parseErrors.length !== 1 ? 's' : ''}</AlertTitle>
-                    <AlertDescription>
-                      <ScrollArea className="h-48 mt-2">
-                        <ul className="space-y-1 text-sm">
-                          {parseErrors.map((err, idx) => (
-                            <li key={idx} className="break-words">
-                              Row {err.row}: {err.message}
-                            </li>
-                          ))}
-                        </ul>
-                      </ScrollArea>
-                    </AlertDescription>
-                  </Alert>
-                )}
+          {preview.length > 0 && !uploadDone && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {preview.length} clients ready to upload
+              </p>
+              <div className="max-h-48 overflow-y-auto border rounded">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="text-left p-2">Client Name</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.map((c) => (
+                      <tr key={c.name} className="border-t">
+                        <td className="p-2">{c.name}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </>
-          ) : (
-            <div className="space-y-4">
-              {uploadResults.successCount > 0 && (
-                <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertTitle className="text-green-800">
-                    Successfully Created {uploadResults.successCount} Client{uploadResults.successCount !== 1 ? 's' : ''}
-                  </AlertTitle>
-                </Alert>
-              )}
+            </div>
+          )}
 
-              {uploadResults.failures.length > 0 && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>{uploadResults.failures.length} Failed</AlertTitle>
-                  <AlertDescription>
-                    <ScrollArea className="h-32 mt-2">
-                      <ul className="space-y-1 text-sm break-words">
-                        {uploadResults.failures.map((fail, idx) => (
-                          <li key={idx}>
-                            {fail.id}: {fail.error}
-                          </li>
+          {uploadDone && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium">
+                Upload complete: {successCount} succeeded, {failCount} failed
+              </div>
+              {uploadResults.filter((r) => !r.success).length > 0 && (
+                <div className="max-h-48 overflow-y-auto border rounded">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted sticky top-0">
+                      <tr>
+                        <th className="text-left p-2">Client Name</th>
+                        <th className="text-left p-2">Error</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {uploadResults
+                        .filter((r) => !r.success)
+                        .map((r) => (
+                          <tr key={r.name} className="border-t">
+                            <td className="p-2">{r.name}</td>
+                            <td className="p-2 text-destructive break-words">
+                              {r.error}
+                            </td>
+                          </tr>
                         ))}
-                      </ul>
-                    </ScrollArea>
-                  </AlertDescription>
-                </Alert>
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          {!uploadResults ? (
+        <DialogFooter>
+          {!uploadDone ? (
             <>
-              <Button variant="outline" onClick={handleClose}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                disabled={isUploading}
+              >
                 Cancel
               </Button>
-              {parsedData && parsedData.length > 0 && (
-                <Button onClick={handleImport} disabled={bulkCreate.isPending}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  {bulkCreate.isPending ? 'Uploading...' : `Upload ${parsedData.length} Client${parsedData.length !== 1 ? 's' : ''}`}
-                </Button>
-              )}
+              <Button
+                type="button"
+                onClick={handleUpload}
+                disabled={
+                  isUploading ||
+                  preview.length === 0 ||
+                  !isActorReady ||
+                  !isAuthenticated
+                }
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  `Upload ${preview.length} Clients`
+                )}
+              </Button>
             </>
           ) : (
-            <>
-              <Button variant="outline" onClick={handleReset}>
-                Upload More
-              </Button>
-              <Button onClick={handleClose}>
-                Close
-              </Button>
-            </>
+            <Button type="button" onClick={handleClose}>
+              Close
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

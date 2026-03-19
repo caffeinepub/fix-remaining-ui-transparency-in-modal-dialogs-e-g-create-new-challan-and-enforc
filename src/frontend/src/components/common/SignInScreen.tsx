@@ -1,66 +1,79 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useInternetIdentity } from '../../hooks/useInternetIdentity';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import React from "react";
+import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 
-/**
- * Full-page sign-in screen guiding users through Internet Identity authentication
- * with loading and error states.
- */
 export default function SignInScreen() {
   const { login, loginStatus } = useInternetIdentity();
-  const [error, setError] = useState<string | null>(null);
-
-  const handleLogin = async () => {
-    setError(null);
-    try {
-      await login();
-    } catch (err: any) {
-      console.error('Login error:', err);
-      setError(err.message || 'Failed to sign in. Please try again.');
-    }
-  };
-
-  const isLoggingIn = loginStatus === 'logging-in';
+  const isLoggingIn = loginStatus === "logging-in";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-primary mb-2">RENTIQ</CardTitle>
-          <CardDescription>Sign in to access your rental management system</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ background: "var(--sidebar-bg)" }}
+    >
+      <div className="text-center max-w-sm w-full px-6">
+        {/* Logo */}
+        <div className="mb-8">
+          <div
+            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4"
+            style={{ background: "var(--sidebar-accent)" }}
+          >
+            <span
+              className="text-3xl font-bold"
+              style={{ color: "var(--sidebar-active)" }}
+            >
+              R
+            </span>
+          </div>
+          <h1
+            className="text-3xl font-bold"
+            style={{ color: "var(--sidebar-fg)" }}
+          >
+            RentIQ
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--sidebar-muted)" }}>
+            Udaipur Equipment Rental
+          </p>
+        </div>
 
+        <div
+          className="rounded-2xl p-6 space-y-4"
+          style={{ background: "var(--sidebar-accent)" }}
+        >
+          <h2
+            className="text-lg font-semibold"
+            style={{ color: "var(--sidebar-fg)" }}
+          >
+            Sign In
+          </h2>
+          <p className="text-sm" style={{ color: "var(--sidebar-muted)" }}>
+            Use Internet Identity to securely access your account.
+          </p>
           <Button
-            onClick={handleLogin}
+            onClick={() => login()}
             disabled={isLoggingIn}
             className="w-full"
             size="lg"
+            style={{
+              background: "var(--sidebar-active)",
+              color: "var(--sidebar-active-fg)",
+            }}
           >
             {isLoggingIn ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Signing in...
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing in...
               </>
             ) : (
-              'Sign in with Internet Identity'
+              "Sign In with Internet Identity"
             )}
           </Button>
+        </div>
 
-          <p className="text-xs text-center text-muted-foreground">
-            Secure authentication powered by Internet Computer
-          </p>
-        </CardContent>
-      </Card>
+        <p className="text-xs mt-6" style={{ color: "var(--sidebar-muted)" }}>
+          Secure authentication powered by the Internet Computer
+        </p>
+      </div>
     </div>
   );
 }

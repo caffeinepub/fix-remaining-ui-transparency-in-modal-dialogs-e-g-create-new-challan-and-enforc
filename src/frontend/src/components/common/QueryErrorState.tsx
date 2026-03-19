@@ -1,11 +1,22 @@
-import { AlertCircle, RefreshCw, LogIn, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { classifyError, getTroubleshootingSteps } from '../../utils/errors';
-import { safeErrorDetails } from '../../utils/safeSerialize';
-import { useInternetIdentity } from '../../hooks/useInternetIdentity';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+  LogIn,
+  RefreshCw,
+} from "lucide-react";
+import { useState } from "react";
+import { useInternetIdentity } from "../../hooks/useInternetIdentity";
+import { classifyError, getTroubleshootingSteps } from "../../utils/errors";
+import { safeErrorDetails } from "../../utils/safeSerialize";
 
 interface QueryErrorStateProps {
   error: unknown;
@@ -16,7 +27,11 @@ interface QueryErrorStateProps {
 /**
  * Reusable error state component for query failures with retry, sign-in actions, troubleshooting guidance, and expandable technical details
  */
-export default function QueryErrorState({ error, onRetry, title = 'Error Loading Data' }: QueryErrorStateProps) {
+export default function QueryErrorState({
+  error,
+  onRetry,
+  title = "Error Loading Data",
+}: QueryErrorStateProps) {
   const { login, identity } = useInternetIdentity();
   const classified = classifyError(error);
   const troubleshootingSteps = getTroubleshootingSteps(error);
@@ -25,7 +40,7 @@ export default function QueryErrorState({ error, onRetry, title = 'Error Loading
   const [showTroubleshooting, setShowTroubleshooting] = useState(false);
 
   // Check if error is authorization-related
-  const isUnauthorized = classified.category === 'authorization';
+  const isUnauthorized = classified.category === "authorization";
 
   // Extract safe error details (no BigInt serialization)
   const details = safeErrorDetails(error);
@@ -36,10 +51,13 @@ export default function QueryErrorState({ error, onRetry, title = 'Error Loading
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription className="mt-2 space-y-3">
         <p>{classified.message}</p>
-        
+
         {/* Troubleshooting Section */}
         {troubleshootingSteps.length > 0 && (
-          <Collapsible open={showTroubleshooting} onOpenChange={setShowTroubleshooting}>
+          <Collapsible
+            open={showTroubleshooting}
+            onOpenChange={setShowTroubleshooting}
+          >
             <CollapsibleTrigger asChild>
               <Button
                 variant="outline"
@@ -61,6 +79,7 @@ export default function QueryErrorState({ error, onRetry, title = 'Error Loading
               <div className="rounded-md bg-muted p-3 text-sm">
                 <ul className="list-disc list-inside space-y-1">
                   {troubleshootingSteps.map((step, index) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: static list of steps
                     <li key={index}>{step}</li>
                   ))}
                 </ul>
@@ -68,7 +87,7 @@ export default function QueryErrorState({ error, onRetry, title = 'Error Loading
             </CollapsibleContent>
           </Collapsible>
         )}
-        
+
         {/* Technical Details Section */}
         <Collapsible open={showDetails} onOpenChange={setShowDetails}>
           <CollapsibleTrigger asChild>
@@ -87,16 +106,28 @@ export default function QueryErrorState({ error, onRetry, title = 'Error Loading
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
             <div className="rounded-md bg-gray-900 p-3 text-xs text-gray-100">
-              <div className="mb-1 font-semibold text-red-400">Error Category:</div>
-              <pre className="mb-3 whitespace-pre-wrap break-words">{classified.category}</pre>
-              
-              <div className="mb-1 font-semibold text-red-400">Error Message:</div>
-              <pre className="mb-3 whitespace-pre-wrap break-words">{details.raw}</pre>
-              
+              <div className="mb-1 font-semibold text-red-400">
+                Error Category:
+              </div>
+              <pre className="mb-3 whitespace-pre-wrap break-words">
+                {classified.category}
+              </pre>
+
+              <div className="mb-1 font-semibold text-red-400">
+                Error Message:
+              </div>
+              <pre className="mb-3 whitespace-pre-wrap break-words">
+                {details.raw}
+              </pre>
+
               {details.stack && (
                 <>
-                  <div className="mb-1 font-semibold text-red-400">Stack Trace:</div>
-                  <pre className="whitespace-pre-wrap break-words">{details.stack}</pre>
+                  <div className="mb-1 font-semibold text-red-400">
+                    Stack Trace:
+                  </div>
+                  <pre className="whitespace-pre-wrap break-words">
+                    {details.stack}
+                  </pre>
                 </>
               )}
             </div>

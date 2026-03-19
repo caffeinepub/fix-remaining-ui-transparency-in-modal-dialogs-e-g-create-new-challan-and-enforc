@@ -1,67 +1,81 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useActor } from './useActor';
-import type { UserApprovalInfo, ApprovalStatus } from '../backend';
-import { Principal } from '@dfinity/principal';
+import type { Principal } from "@icp-sdk/core/principal";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { UserApprovalInfo } from "../backend";
+import { ApprovalStatus } from "../backend";
+import { useActor } from "./useActor";
+import { useInternetIdentity } from "./useInternetIdentity";
 
-/**
- * Hook to check if the current caller is an admin (for access management UI).
- */
 export function useIsAdmin() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
+  const { identity } = useInternetIdentity();
 
   return useQuery<boolean>({
-    queryKey: ['isCallerAdmin'],
+    queryKey: ["isAdmin"],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerAdmin();
+      try {
+        return await actor.isCallerAdmin();
+      } catch {
+        return false;
+      }
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor && !actorFetching && !!identity,
+    retry: 2,
   });
 }
 
-/**
- * Hook to list all user approvals (admin only).
- */
 export function useListApprovals() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
+  const { identity } = useInternetIdentity();
 
   return useQuery<UserApprovalInfo[]>({
-    queryKey: ['approvals'],
+    queryKey: ["listApprovals"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.listApprovals();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching && !!identity,
+    refetchInterval: 10000,
+    retry: 2,
   });
 }
 
-/**
- * Mutation hook to set approval status for a user (admin only).
- */
 export function useSetApproval() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ user, status }: { user: Principal; status: ApprovalStatus }) => {
-      if (!actor) throw new Error('Actor not available');
+    mutationFn: async ({
+      user,
+      status,
+    }: { user: Principal; status: ApprovalStatus }) => {
+      if (!actor) throw new Error("Actor not available");
       return actor.setApproval(user, status);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['approvals'] });
+      queryClient.invalidateQueries({ queryKey: ["listApprovals"] });
+      queryClient.invalidateQueries({ queryKey: ["approvalStatus"] });
     },
   });
 }
 
-/**
- * Helper to derive pending and approved users from the full approval list.
- */
-export function useDerivedApprovalLists() {
-  const { data: approvals = [], isLoading, refetch } = useListApprovals();
+export function useAccessManagement() {
+  const listQuery = useListApprovals();
 
-  const pending = approvals.filter((a) => a.status === 'pending');
-  const approved = approvals.filter((a) => a.status === 'approved');
+  const pendingUsers = (listQuery.data ?? []).filter(
+    (u) => u.status === ApprovalStatus.pending,
+  );
+  const approvedUsers = (listQuery.data ?? []).filter(
+    (u) => u.status === ApprovalStatus.approved,
+  );
+  const rejectedUsers = (listQuery.data ?? []).filter(
+    (u) => u.status === ApprovalStatus.rejected,
+  );
 
-  return { pending, approved, isLoading, refetch };
+  return {
+    ...listQuery,
+    pendingUsers,
+    approvedUsers,
+    rejectedUsers,
+  };
 }

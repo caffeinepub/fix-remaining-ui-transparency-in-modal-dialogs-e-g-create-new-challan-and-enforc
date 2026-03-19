@@ -1,5 +1,5 @@
-import type { Payment } from '../backend';
-import { parseDate } from './dates';
+import type { Payment } from "../backend";
+import { parseDate } from "./dates";
 
 interface ParsedPaymentRow {
   rowNumber: number;
@@ -21,7 +21,7 @@ interface ValidationResult {
  * Parse CSV text into payment rows
  */
 function parseCSV(text: string): ParsedPaymentRow[] {
-  const lines = text.split('\n').filter((line) => line.trim());
+  const lines = text.split("\n").filter((line) => line.trim());
   const rows: ParsedPaymentRow[] = [];
 
   // Skip header row
@@ -31,16 +31,16 @@ function parseCSV(text: string): ParsedPaymentRow[] {
 
     // Simple CSV parsing (handles quoted values)
     const values: string[] = [];
-    let current = '';
+    let current = "";
     let inQuotes = false;
 
     for (let j = 0; j < line.length; j++) {
       const char = line[j];
       if (char === '"') {
         inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
+      } else if (char === "," && !inQuotes) {
         values.push(current.trim());
-        current = '';
+        current = "";
       } else {
         current += char;
       }
@@ -50,13 +50,13 @@ function parseCSV(text: string): ParsedPaymentRow[] {
     if (values.length >= 6) {
       rows.push({
         rowNumber: i + 1,
-        id: values[0].replace(/^"|"$/g, ''),
-        date: values[1].replace(/^"|"$/g, ''),
-        client: values[2].replace(/^"|"$/g, ''),
-        mode: values[3].replace(/^"|"$/g, ''),
-        amount: values[4].replace(/^"|"$/g, ''),
-        referenceNumber: values[5].replace(/^"|"$/g, ''),
-        site: values[6]?.replace(/^"|"$/g, '') || '',
+        id: values[0].replace(/^"|"$/g, ""),
+        date: values[1].replace(/^"|"$/g, ""),
+        client: values[2].replace(/^"|"$/g, ""),
+        mode: values[3].replace(/^"|"$/g, ""),
+        amount: values[4].replace(/^"|"$/g, ""),
+        referenceNumber: values[5].replace(/^"|"$/g, ""),
+        site: values[6]?.replace(/^"|"$/g, "") || "",
       });
     }
   }
@@ -69,7 +69,7 @@ function parseCSV(text: string): ParsedPaymentRow[] {
  */
 export function parseAndValidatePaymentCSV(
   text: string,
-  existingPayments: Payment[]
+  existingPayments: Payment[],
 ): ValidationResult {
   const rows = parseCSV(text);
   const valid: Payment[] = [];
@@ -80,8 +80,11 @@ export function parseAndValidatePaymentCSV(
 
   for (const row of rows) {
     // Validate ID
-    if (!row.id || row.id.trim() === '') {
-      errors.push({ rowNumber: row.rowNumber, error: 'Payment ID is required' });
+    if (!row.id || row.id.trim() === "") {
+      errors.push({
+        rowNumber: row.rowNumber,
+        error: "Payment ID is required",
+      });
       continue;
     }
 
@@ -110,10 +113,10 @@ export function parseAndValidatePaymentCSV(
     try {
       const parsedDate = parseDate(row.date);
       if (!parsedDate) {
-        throw new Error('Invalid date format');
+        throw new Error("Invalid date format");
       }
       dateNano = BigInt(parsedDate.getTime() * 1_000_000);
-    } catch (error) {
+    } catch (_error) {
       errors.push({
         rowNumber: row.rowNumber,
         error: `Invalid date format "${row.date}". Use YYYY-MM-DD`,
@@ -123,28 +126,28 @@ export function parseAndValidatePaymentCSV(
     }
 
     // Validate client
-    if (!row.client || row.client.trim() === '') {
+    if (!row.client || row.client.trim() === "") {
       errors.push({
         rowNumber: row.rowNumber,
-        error: 'Client name is required',
+        error: "Client name is required",
         id: row.id,
       });
       continue;
     }
 
     // Validate mode
-    if (!row.mode || row.mode.trim() === '') {
+    if (!row.mode || row.mode.trim() === "") {
       errors.push({
         rowNumber: row.rowNumber,
-        error: 'Payment mode is required',
+        error: "Payment mode is required",
         id: row.id,
       });
       continue;
     }
 
     // Validate amount
-    const amount = parseFloat(row.amount);
-    if (isNaN(amount) || amount <= 0) {
+    const amount = Number.parseFloat(row.amount);
+    if (Number.isNaN(amount) || amount <= 0) {
       errors.push({
         rowNumber: row.rowNumber,
         error: `Invalid amount "${row.amount}". Must be a positive number`,
@@ -154,7 +157,7 @@ export function parseAndValidatePaymentCSV(
     }
 
     // Reference number is optional, default to empty string
-    const referenceNumber = row.referenceNumber || '';
+    const referenceNumber = row.referenceNumber || "";
 
     seenIds.add(row.id);
     const createdAt = BigInt(Date.now() * 1_000_000);
@@ -167,7 +170,7 @@ export function parseAndValidatePaymentCSV(
       amount,
       referenceNumber,
       createdAt,
-      site: row.site || '',
+      site: row.site || "",
     });
   }
 

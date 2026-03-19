@@ -1,186 +1,122 @@
-// Date utility functions for converting between JavaScript Date and backend bigint timestamps
-
-/**
- * Convert JavaScript Date to nanosecond timestamp (bigint)
- */
 export function dateToNano(date: Date): bigint {
-  return BigInt(date.getTime()) * BigInt(1_000_000);
+  return BigInt(date.getTime()) * 1_000_000n;
 }
 
-/**
- * Convert nanosecond timestamp (bigint) to JavaScript Date
- */
 export function nanoToDate(nano: bigint): Date {
-  return new Date(Number(nano / BigInt(1_000_000)));
+  return new Date(Number(nano / 1_000_000n));
 }
 
-/**
- * Get current timestamp in nanoseconds
- */
-export function getTodayNano(): bigint {
-  return dateToNano(new Date());
+export function formatDate(date: Date): string {
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-/**
- * Normalize date to start of day (00:00:00)
- */
-export function normalizeDate(date: Date): Date {
-  const normalized = new Date(date);
-  normalized.setHours(0, 0, 0, 0);
-  return normalized;
+export function formatDateShort(date: Date): string {
+  const d = date.getDate().toString().padStart(2, "0");
+  const m = (date.getMonth() + 1).toString().padStart(2, "0");
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
 }
 
-/**
- * Parse date string to Date object normalized to start-of-day in local timezone
- * Supports both YYYY-MM-DD and DD-MMM-YY formats (e.g., "2025-08-25" or "25-Aug-25")
- * This prevents timezone-related shifts that can make dates appear incorrect after reload
- * Returns null if invalid
- */
-export function parseDateOnly(dateStr: string): Date | null {
-  if (!dateStr || typeof dateStr !== 'string') {
-    return null;
-  }
-  
-  // Try YYYY-MM-DD format first
-  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+export function toDateInputValue(date: Date): string {
+  const y = date.getFullYear();
+  const m = (date.getMonth() + 1).toString().padStart(2, "0");
+  const d = date.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function parseDateOnly(str: string): Date | null {
+  if (!str) return null;
+
+  // YYYY-MM-DD
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (isoMatch) {
-    const year = parseInt(isoMatch[1], 10);
-    const month = parseInt(isoMatch[2], 10) - 1; // months are 0-indexed
-    const day = parseInt(isoMatch[3], 10);
-    
-    // Create date in local timezone at start of day
-    const date = new Date(year, month, day, 0, 0, 0, 0);
-    
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      return null;
-    }
-    
-    return date;
+    const d = new Date(
+      Number.parseInt(isoMatch[1]),
+      Number.parseInt(isoMatch[2]) - 1,
+      Number.parseInt(isoMatch[3]),
+    );
+    return Number.isNaN(d.getTime()) ? null : d;
   }
-  
-  // Try DD-MMM-YY format (e.g., "25-Aug-25")
-  const ddMmmYyMatch = dateStr.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/);
-  if (ddMmmYyMatch) {
-    const day = parseInt(ddMmmYyMatch[1], 10);
-    const monthStr = ddMmmYyMatch[2].toLowerCase();
-    const yearShort = parseInt(ddMmmYyMatch[3], 10);
-    
-    // Map month abbreviations (case-insensitive)
-    const monthMap: { [key: string]: number } = {
-      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-    };
-    
-    const month = monthMap[monthStr];
-    if (month === undefined) {
-      return null;
-    }
-    
-    // Convert 2-digit year to 4-digit year
-    // Assume 00-49 = 2000-2049, 50-99 = 1950-1999
-    const year = yearShort < 50 ? 2000 + yearShort : 1900 + yearShort;
-    
-    // Create date in local timezone at start of day
-    const date = new Date(year, month, day, 0, 0, 0, 0);
-    
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      return null;
-    }
-    
-    return date;
+
+  // DD-MMM-YY or DD-MMM-YYYY
+  const months: Record<string, number> = {
+    jan: 0,
+    feb: 1,
+    mar: 2,
+    apr: 3,
+    may: 4,
+    jun: 5,
+    jul: 6,
+    aug: 7,
+    sep: 8,
+    oct: 9,
+    nov: 10,
+    dec: 11,
+  };
+  const dmmyMatch = str.match(/^(\d{1,2})[\/\-]([A-Za-z]{3})[\/\-](\d{2,4})$/);
+  if (dmmyMatch) {
+    const day = Number.parseInt(dmmyMatch[1]);
+    const mon = months[dmmyMatch[2].toLowerCase()];
+    let year = Number.parseInt(dmmyMatch[3]);
+    if (year < 100) year += 2000;
+    if (mon === undefined) return null;
+    const d = new Date(year, mon, day);
+    return Number.isNaN(d.getTime()) ? null : d;
   }
-  
+
+  // DD/MM/YYYY
+  const dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyMatch) {
+    const d = new Date(
+      Number.parseInt(dmyMatch[3]),
+      Number.parseInt(dmyMatch[2]) - 1,
+      Number.parseInt(dmyMatch[1]),
+    );
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
   return null;
 }
 
 /**
- * Check if two bigint timestamps represent the same day
+ * Parse a date string — alias for parseDateOnly for backward compatibility
  */
-export function isSameDay(nano1: bigint, nano2: bigint): boolean {
-  const date1 = normalizeDate(nanoToDate(nano1));
-  const date2 = normalizeDate(nanoToDate(nano2));
-  return date1.getTime() === date2.getTime();
+export function parseDate(str: string): Date | null {
+  return parseDateOnly(str);
 }
 
-/**
- * Calculate rental days between two dates (excluding return day)
- */
-export function calculateRentalDays(startDate: Date, endDate: Date): number {
-  const start = normalizeDate(startDate);
-  const end = normalizeDate(endDate);
-  const diffTime = end.getTime() - start.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return Math.max(0, diffDays);
+export function startOfDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-/**
- * Add days to a Date object
- */
+export function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
 export function addDays(date: Date, days: number): Date {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
   return result;
 }
 
-/**
- * Add days to a nanosecond timestamp (bigint)
- */
-export function addDaysToNano(nano: bigint, days: number): bigint {
-  const date = nanoToDate(nano);
-  const newDate = addDays(date, days);
-  return dateToNano(newDate);
+export function calculateRentalDays(startDate: Date, endDate: Date): number {
+  const start = startOfDay(startDate);
+  const end = startOfDay(endDate);
+  const diffMs = end.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return Math.max(1, diffDays);
 }
 
-/**
- * Format currency value
- */
-export function formatCurrency(value: number): string {
-  return `₹${value.toFixed(2)}`;
-}
-
-/**
- * Format date for display
- */
-export function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-IN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-/**
- * Format date for input fields (YYYY-MM-DD)
- */
-export function formatDateForInput(date: Date): string {
-  return date.toISOString().split('T')[0];
-}
-
-/**
- * Parse date string (YYYY-MM-DD) to Date object
- * Returns null if invalid
- */
-export function parseDate(dateStr: string): Date | null {
-  if (!dateStr || typeof dateStr !== 'string') {
-    return null;
-  }
-  
-  const date = new Date(dateStr);
-  
-  // Check if date is valid
-  if (isNaN(date.getTime())) {
-    return null;
-  }
-  
-  return date;
-}
-
-/**
- * Format challan rent date from bigint nanoseconds for consistent display
- * This helper ensures all UI locations display the same rent date value
- */
 export function formatChallanRentDate(rentDateNano: bigint): string {
   return formatDate(nanoToDate(rentDateNano));
+}
+
+export function formatCurrency(value: number): string {
+  return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

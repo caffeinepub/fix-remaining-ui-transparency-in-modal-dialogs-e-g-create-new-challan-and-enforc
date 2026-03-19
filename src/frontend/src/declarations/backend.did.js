@@ -56,6 +56,7 @@ export const PettyCash = IDL.Record({
   'createdAt' : IDL.Int,
   'transferFromCashEquivalents' : IDL.Float64,
   'staffAdvance' : IDL.Float64,
+  'cashReceivedAuto' : IDL.Float64,
   'closingBalance' : IDL.Float64,
   'openingBalance' : IDL.Float64,
   'handoverToMd' : IDL.Float64,
@@ -119,9 +120,11 @@ export const PettyCashWithAttachments = IDL.Record({
 });
 export const BuildMetadata = IDL.Record({
   'gitCommitHash' : IDL.Text,
+  'isTestEnv' : IDL.Bool,
   'buildTime' : IDL.Int,
   'canisterId' : IDL.Text,
 });
+export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const ApprovalStatus = IDL.Variant({
   'pending' : IDL.Null,
   'approved' : IDL.Null,
@@ -190,10 +193,9 @@ export const idlService = IDL.Service({
         IDL.Float64,
         IDL.Float64,
         IDL.Float64,
-        IDL.Float64,
-        IDL.Float64,
         IDL.Vec(PettyCashCategory),
         IDL.Text,
+        IDL.Float64,
         IDL.Int,
       ],
       [],
@@ -260,6 +262,7 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getBuildMetadata' : IDL.Func([], [BuildMetadata], ['query']),
+  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getChallansByClient' : IDL.Func([IDL.Text], [IDL.Vec(Challan)], ['query']),
   'getChallansByDateRange' : IDL.Func(
@@ -279,6 +282,11 @@ export const idlService = IDL.Service({
       [IDL.Vec(PettyCash)],
       ['query'],
     ),
+  'getUserProfile' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(UserProfile)],
+      ['query'],
+    ),
   'healthCheck' : IDL.Func([], [IDL.Int], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
@@ -291,6 +299,7 @@ export const idlService = IDL.Service({
     ),
   'requestApproval' : IDL.Func([], [], []),
   'revertChallanToActive' : IDL.Func([IDL.Text], [], []),
+  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setApproval' : IDL.Func([IDL.Principal, ApprovalStatus], [], []),
   'updateChallan' : IDL.Func(
       [
@@ -320,10 +329,9 @@ export const idlService = IDL.Service({
         IDL.Float64,
         IDL.Float64,
         IDL.Float64,
-        IDL.Float64,
-        IDL.Float64,
         IDL.Vec(PettyCashCategory),
         IDL.Text,
+        IDL.Float64,
       ],
       [],
       [],
@@ -381,6 +389,7 @@ export const idlFactory = ({ IDL }) => {
     'createdAt' : IDL.Int,
     'transferFromCashEquivalents' : IDL.Float64,
     'staffAdvance' : IDL.Float64,
+    'cashReceivedAuto' : IDL.Float64,
     'closingBalance' : IDL.Float64,
     'openingBalance' : IDL.Float64,
     'handoverToMd' : IDL.Float64,
@@ -444,9 +453,11 @@ export const idlFactory = ({ IDL }) => {
   });
   const BuildMetadata = IDL.Record({
     'gitCommitHash' : IDL.Text,
+    'isTestEnv' : IDL.Bool,
     'buildTime' : IDL.Int,
     'canisterId' : IDL.Text,
   });
+  const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const ApprovalStatus = IDL.Variant({
     'pending' : IDL.Null,
     'approved' : IDL.Null,
@@ -515,10 +526,9 @@ export const idlFactory = ({ IDL }) => {
           IDL.Float64,
           IDL.Float64,
           IDL.Float64,
-          IDL.Float64,
-          IDL.Float64,
           IDL.Vec(PettyCashCategory),
           IDL.Text,
+          IDL.Float64,
           IDL.Int,
         ],
         [],
@@ -585,6 +595,7 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getBuildMetadata' : IDL.Func([], [BuildMetadata], ['query']),
+    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getChallansByClient' : IDL.Func([IDL.Text], [IDL.Vec(Challan)], ['query']),
     'getChallansByDateRange' : IDL.Func(
@@ -604,6 +615,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(PettyCash)],
         ['query'],
       ),
+    'getUserProfile' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(UserProfile)],
+        ['query'],
+      ),
     'healthCheck' : IDL.Func([], [IDL.Int], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
@@ -616,6 +632,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'requestApproval' : IDL.Func([], [], []),
     'revertChallanToActive' : IDL.Func([IDL.Text], [], []),
+    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setApproval' : IDL.Func([IDL.Principal, ApprovalStatus], [], []),
     'updateChallan' : IDL.Func(
         [
@@ -645,10 +662,9 @@ export const idlFactory = ({ IDL }) => {
           IDL.Float64,
           IDL.Float64,
           IDL.Float64,
-          IDL.Float64,
-          IDL.Float64,
           IDL.Vec(PettyCashCategory),
           IDL.Text,
+          IDL.Float64,
         ],
         [],
         [],

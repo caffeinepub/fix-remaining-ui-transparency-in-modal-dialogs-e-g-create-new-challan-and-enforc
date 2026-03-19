@@ -1,219 +1,216 @@
-import { useState, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import { Download, Filter, AlertCircle } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileSpreadsheet } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import type { PettyCash, PettyCashWithAttachments } from "../backend";
 import {
   useChallans,
+  useClients,
   usePayments,
   usePettyCash,
-  useClients,
-} from '../hooks/useQueries';
-import { toast } from 'sonner';
-import { exportReportToExcel } from '../utils/exportToExcel';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { nanoToDate } from '../utils/dates';
-import type { Challan, Payment, PettyCash } from '../backend';
+} from "../hooks/useQueries";
+import { calculateChallanTotal } from "../utils/challanTotals";
+import { nanoToDate } from "../utils/dates";
+import { exportReportToExcel } from "../utils/exportToExcel";
 
-type ReportType = 'daily' | 'monthly' | 'alltime' | 'custom';
+const ALL_CLIENTS = "__ALL_CLIENTS__";
+const ALL_SITES = "__ALL_SITES__";
+const ALL_STATUSES = "__ALL_STATUSES__";
 
-// Sentinel values for "All" options
-const ALL_CLIENTS = 'ALL_CLIENTS';
-const ALL_SITES = 'ALL_SITES';
-const ALL_STATUS = 'ALL_STATUS';
+type DateFilter = "daily" | "monthly" | "all-time" | "custom";
+
+function formatDate(nanos: bigint): string {
+  return nanoToDate(nanos).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatCurrency(value: number): string {
+  return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function getDateRange(
+  filter: DateFilter,
+  customStart: string,
+  customEnd: string,
+): { start: Date; end: Date } | null {
+  const now = new Date();
+  if (filter === "daily") {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const end = new Date(start.getTime() + 86400000 - 1);
+    return { start, end };
+  }
+  if (filter === "monthly") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
+    return { start, end };
+  }
+  if (filter === "custom" && customStart && customEnd) {
+    return {
+      start: new Date(customStart),
+      end: new Date(`${customEnd}T23:59:59`),
+    };
+  }
+  return null;
+}
+
+function isInDateRange(
+  nanos: bigint,
+  range: { start: Date; end: Date } | null,
+): boolean {
+  if (!range) return true;
+  const ms = Number(nanos) / 1_000_000;
+  return ms >= range.start.getTime() && ms <= range.end.getTime();
+}
+
+function calculatePettyCashNetChange(record: PettyCash): number {
+  return (
+    record.openingBalance +
+    record.cashFromMd +
+    record.transferFromCashEquivalents +
+    record.cashReceivedAuto -
+    record.expenses -
+    record.staffAdvance -
+    record.handoverToMd
+  );
+}
 
 export default function ReportsPage() {
-  const [reportType, setReportType] = useState<ReportType>('alltime');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const [selectedClient, setSelectedClient] = useState<string>(ALL_CLIENTS);
-  const [selectedSite, setSelectedSite] = useState<string>(ALL_SITES);
-  const [selectedStatus, setSelectedStatus] = useState<string>(ALL_STATUS);
-  const [isExporting, setIsExporting] = useState(false);
+  const { data: challans = [] } = useChallans();
+  const { data: payments = [] } = usePayments();
+  const { data: pettyCashWithAttachments = [] } = usePettyCash();
+  const { data: clients = [] } = useClients();
 
-  const { data: allChallans = [], isLoading: challansLoading } = useChallans();
-  const { data: allPayments = [], isLoading: paymentsLoading } = usePayments();
-  const { data: allPettyCashWithAttachments = [], isLoading: pettyCashLoading } = usePettyCash();
-  const { data: allClients = [] } = useClients();
+  const pettyCashRecords: PettyCash[] = useMemo(
+    () =>
+      (pettyCashWithAttachments as PettyCashWithAttachments[]).map(
+        (p) => p.pettyCash,
+      ),
+    [pettyCashWithAttachments],
+  );
 
-  const isLoading = challansLoading || paymentsLoading || pettyCashLoading;
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all-time");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [clientFilter, setClientFilter] = useState(ALL_CLIENTS);
+  const [siteFilter, setSiteFilter] = useState(ALL_SITES);
+  const [statusFilter, setStatusFilter] = useState(ALL_STATUSES);
 
-  // Extract PettyCash objects from PettyCashWithAttachments
-  const allPettyCash = useMemo(() => {
-    return allPettyCashWithAttachments.map((pc) => pc.pettyCash);
-  }, [allPettyCashWithAttachments]);
+  const dateRange = useMemo(
+    () => getDateRange(dateFilter, customStart, customEnd),
+    [dateFilter, customStart, customEnd],
+  );
 
-  // Get all unique sites from challans and payments (for filter dropdown)
-  const allSites = useMemo(() => {
-    const challanSites = allChallans.map(c => c.site).filter(s => s && s.trim() !== '');
-    const paymentSites = allPayments.map(p => p.site).filter(s => s && s.trim() !== '');
-    return Array.from(new Set([...challanSites, ...paymentSites]));
-  }, [allChallans, allPayments]);
+  const clientNames: string[] = useMemo(
+    () => Array.from(new Set(clients.map((c) => c.name))).sort(),
+    [clients],
+  );
 
-  // Date validation for Custom report type
-  const dateValidationError = useMemo(() => {
-    if (reportType === 'custom') {
-      if (!startDate || !endDate) {
-        return 'Please select both Start Date and End Date for custom date range.';
+  const siteNames: string[] = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            ...challans.map((c) => c.site),
+            ...payments.map((p) => p.site),
+          ].filter((s): s is string => Boolean(s)),
+        ),
+      ).sort(),
+    [challans, payments],
+  );
+
+  const filteredChallans = useMemo(() => {
+    return challans.filter((c) => {
+      if (!isInDateRange(c.rentDate, dateRange)) return false;
+      if (clientFilter !== ALL_CLIENTS && c.clientName !== clientFilter)
+        return false;
+      if (siteFilter !== ALL_SITES && c.site !== siteFilter) return false;
+      if (statusFilter !== ALL_STATUSES) {
+        if (statusFilter === "returned" && !c.returned) return false;
+        if (statusFilter === "active" && c.returned) return false;
       }
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      if (start > end) {
-        return 'Start Date cannot be after End Date.';
-      }
-    }
-    return null;
-  }, [reportType, startDate, endDate]);
+      return true;
+    });
+  }, [challans, dateRange, clientFilter, siteFilter, statusFilter]);
 
-  // Apply filters to get the filtered dataset
-  const filteredData = useMemo(() => {
-    let filteredChallans = [...allChallans];
-    let filteredPayments = [...allPayments];
-    let filteredPettyCash = [...allPettyCash];
+  const filteredPayments = useMemo(() => {
+    return payments.filter((p) => {
+      if (!isInDateRange(p.date, dateRange)) return false;
+      if (clientFilter !== ALL_CLIENTS && p.client !== clientFilter)
+        return false;
+      if (siteFilter !== ALL_SITES && p.site !== siteFilter) return false;
+      return true;
+    });
+  }, [payments, dateRange, clientFilter, siteFilter]);
 
-    // Date range filter - use rentDate for challans
-    if (reportType === 'daily') {
-      const date = new Date(selectedDate);
-      const dayStart = new Date(date.setHours(0, 0, 0, 0)).getTime() * 1_000_000;
-      const dayEnd = new Date(date.setHours(23, 59, 59, 999)).getTime() * 1_000_000;
-      
-      filteredChallans = filteredChallans.filter(c => 
-        Number(c.rentDate) >= dayStart && Number(c.rentDate) <= dayEnd
-      );
-      filteredPayments = filteredPayments.filter(p => 
-        Number(p.date) >= dayStart && Number(p.date) <= dayEnd
-      );
-      filteredPettyCash = filteredPettyCash.filter(pc => 
-        Number(pc.date) >= dayStart && Number(pc.date) <= dayEnd
-      );
-    } else if (reportType === 'monthly') {
-      const date = new Date(selectedDate);
-      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1).getTime() * 1_000_000;
-      const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999).getTime() * 1_000_000;
-      
-      filteredChallans = filteredChallans.filter(c => 
-        Number(c.rentDate) >= monthStart && Number(c.rentDate) <= monthEnd
-      );
-      filteredPayments = filteredPayments.filter(p => 
-        Number(p.date) >= monthStart && Number(p.date) <= monthEnd
-      );
-      filteredPettyCash = filteredPettyCash.filter(pc => 
-        Number(pc.date) >= monthStart && Number(pc.date) <= monthEnd
-      );
-    } else if (reportType === 'custom' && startDate && endDate && !dateValidationError) {
-      const customStart = new Date(startDate).getTime() * 1_000_000;
-      const customEnd = new Date(endDate + 'T23:59:59').getTime() * 1_000_000;
-      
-      filteredChallans = filteredChallans.filter(c => 
-        Number(c.rentDate) >= customStart && Number(c.rentDate) <= customEnd
-      );
-      filteredPayments = filteredPayments.filter(p => 
-        Number(p.date) >= customStart && Number(p.date) <= customEnd
-      );
-      filteredPettyCash = filteredPettyCash.filter(pc => 
-        Number(pc.date) >= customStart && Number(pc.date) <= customEnd
-      );
-    }
+  const filteredPettyCash = useMemo(() => {
+    return pettyCashRecords.filter((r) => isInDateRange(r.date, dateRange));
+  }, [pettyCashRecords, dateRange]);
 
-    // Client filter (only apply if not "All Clients")
-    if (selectedClient !== ALL_CLIENTS) {
-      filteredChallans = filteredChallans.filter(c => c.clientName === selectedClient);
-      filteredPayments = filteredPayments.filter(p => p.client === selectedClient);
-    }
+  const totalRent = useMemo(
+    () =>
+      filteredChallans.reduce((sum, c) => sum + calculateChallanTotal(c), 0),
+    [filteredChallans],
+  );
+  const totalPayments = useMemo(
+    () => filteredPayments.reduce((sum, p) => sum + p.amount, 0),
+    [filteredPayments],
+  );
+  const cashReceived = useMemo(
+    () =>
+      filteredPayments
+        .filter((p) => p.mode.toLowerCase() === "cash")
+        .reduce((sum, p) => sum + p.amount, 0),
+    [filteredPayments],
+  );
+  const onlineReceived = useMemo(
+    () =>
+      filteredPayments
+        .filter((p) => p.mode.toLowerCase() !== "cash")
+        .reduce((sum, p) => sum + p.amount, 0),
+    [filteredPayments],
+  );
 
-    // Site filter (only apply if not "All Sites")
-    if (selectedSite !== ALL_SITES) {
-      filteredChallans = filteredChallans.filter(c => c.site === selectedSite);
-      filteredPayments = filteredPayments.filter(p => p.site === selectedSite);
-      // Note: PettyCash no longer has site field, so we don't filter it by site
-    }
-
-    // Status filter (only apply if not "All Status")
-    if (selectedStatus === 'active') {
-      filteredChallans = filteredChallans.filter(c => !c.returned);
-    } else if (selectedStatus === 'returned') {
-      filteredChallans = filteredChallans.filter(c => c.returned);
-    }
-
-    return {
-      challans: filteredChallans,
-      payments: filteredPayments,
-      pettyCash: filteredPettyCash,
-    };
-  }, [allChallans, allPayments, allPettyCash, reportType, selectedDate, startDate, endDate, selectedClient, selectedSite, selectedStatus, dateValidationError]);
-
-  // Calculate summary metrics from filtered data
-  const summary = useMemo(() => {
-    const totalRent = filteredData.challans.reduce((sum, challan) => {
-      const itemsTotal = challan.items.reduce(
-        (s, item) => s + (item.quantity * item.rate * item.rentalDays),
-        0
-      );
-      return sum + itemsTotal + challan.freight;
-    }, 0);
-
-    const totalReceived = filteredData.payments.reduce((sum, p) => sum + p.amount, 0);
-    
-    // Calculate cash received (case-insensitive "CASH" mode)
-    const cashReceived = filteredData.payments
-      .filter(p => p.mode.toUpperCase() === 'CASH')
-      .reduce((sum, p) => sum + p.amount, 0);
-    
-    const pendingAmount = totalRent - totalReceived;
-    const outstanding = pendingAmount > 0 ? pendingAmount : 0;
-    const advance = pendingAmount < 0 ? Math.abs(pendingAmount) : 0;
-    
-    const pettyCashAdjustments = filteredData.pettyCash.reduce((sum, pc) => sum + pc.netChange, 0);
-
-    return {
-      totalRent,
-      totalReceived,
-      cashReceived,
-      pendingAmount,
-      outstanding,
-      advance,
-      pettyCashAdjustments,
-    };
-  }, [filteredData]);
-
-  // Compute client-wise summary from filtered data
   const clientSummary = useMemo(() => {
-    const clientMap = new Map<string, {
-      totalRent: number;
-      totalPayments: number;
-    }>();
-
-    // Aggregate rent from filtered challans
-    filteredData.challans.forEach(challan => {
-      const itemsTotal = challan.items.reduce(
-        (sum, item) => sum + (item.quantity * item.rate * item.rentalDays),
-        0
-      );
-      const total = itemsTotal + challan.freight;
-      
-      const existing = clientMap.get(challan.clientName) || { totalRent: 0, totalPayments: 0 };
-      clientMap.set(challan.clientName, {
-        ...existing,
-        totalRent: existing.totalRent + total,
-      });
-    });
-
-    // Aggregate payments from filtered payments
-    filteredData.payments.forEach(payment => {
-      const existing = clientMap.get(payment.client) || { totalRent: 0, totalPayments: 0 };
-      clientMap.set(payment.client, {
-        ...existing,
-        totalPayments: existing.totalPayments + payment.amount,
-      });
-    });
-
-    // Convert to array with outstanding/advance
-    return Array.from(clientMap.entries()).map(([clientName, data]) => {
+    const map = new Map<string, { totalRent: number; totalPayments: number }>();
+    for (const c of filteredChallans) {
+      const total = calculateChallanTotal(c);
+      const ex = map.get(c.clientName) || { totalRent: 0, totalPayments: 0 };
+      map.set(c.clientName, { ...ex, totalRent: ex.totalRent + total });
+    }
+    for (const p of filteredPayments) {
+      const ex = map.get(p.client) || { totalRent: 0, totalPayments: 0 };
+      map.set(p.client, { ...ex, totalPayments: ex.totalPayments + p.amount });
+    }
+    return Array.from(map.entries()).map(([clientName, data]) => {
       const balance = data.totalRent - data.totalPayments;
       return {
         clientName,
@@ -223,495 +220,391 @@ export default function ReportsPage() {
         advance: balance < 0 ? Math.abs(balance) : 0,
       };
     });
-  }, [filteredData]);
+  }, [filteredChallans, filteredPayments]);
 
-  // Compute inventory usage from filtered challans (for display only, not export)
-  const inventoryUsage = useMemo(() => {
-    const inventoryMap = new Map<string, {
-      totalQuantity: number;
-      issuedQuantity: number;
-      dailyRate: number;
-    }>();
-
-    filteredData.challans.forEach(challan => {
-      challan.items.forEach(item => {
-        const existing = inventoryMap.get(item.itemName) || {
-          totalQuantity: 0,
-          issuedQuantity: 0,
-          dailyRate: item.rate,
-        };
-        inventoryMap.set(item.itemName, {
-          totalQuantity: existing.totalQuantity + item.quantity,
-          issuedQuantity: existing.issuedQuantity + item.quantity,
-          dailyRate: item.rate,
-        });
-      });
+  const handleDownloadAll = () => {
+    exportReportToExcel({
+      challans: filteredChallans,
+      payments: filteredPayments,
+      pettyCash: filteredPettyCash,
+      clientBalances: clientSummary,
+      summary: {
+        totalRent,
+        totalReceived: totalPayments,
+        cashReceived,
+        pendingAmount: totalRent - totalPayments,
+        outstanding:
+          totalRent - totalPayments > 0 ? totalRent - totalPayments : 0,
+        advance:
+          totalRent - totalPayments < 0
+            ? Math.abs(totalRent - totalPayments)
+            : 0,
+        pettyCashAdjustments: filteredPettyCash.reduce(
+          (s, r) => s + calculatePettyCashNetChange(r),
+          0,
+        ),
+      },
     });
-
-    return Array.from(inventoryMap.entries()).map(([name, data]) => ({
-      name,
-      totalQuantity: data.totalQuantity,
-      issuedQuantity: data.issuedQuantity,
-      availableQuantity: 0,
-      dailyRate: data.dailyRate,
-    }));
-  }, [filteredData]);
-
-  const handleExport = async () => {
-    // Validate dates for custom report type before export
-    if (reportType === 'custom' && dateValidationError) {
-      toast.error(dateValidationError);
-      return;
-    }
-
-    setIsExporting(true);
-    try {
-      // Export without inventory data, passing filtered payments for per-row cash received calculation
-      await exportReportToExcel({
-        challans: filteredData.challans,
-        payments: filteredData.payments,
-        pettyCash: filteredData.pettyCash,
-        clientBalances: clientSummary,
-        summary,
-      });
-
-      toast.success('Master report.xls downloaded successfully');
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error('Failed to export report. Please try again.');
-    } finally {
-      setIsExporting(false);
-    }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-          <p className="text-sm text-gray-600 mt-1">View and export comprehensive reports</p>
+          <h1 className="text-2xl font-bold">Reports</h1>
+          <p className="text-muted-foreground text-sm">
+            View and export filtered data across all modules
+          </p>
         </div>
-        <Button 
-          onClick={handleExport} 
-          disabled={isLoading || isExporting} 
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          {isExporting ? 'Exporting...' : 'Download All'}
+        <Button onClick={handleDownloadAll} className="gap-2">
+          <FileSpreadsheet className="w-4 h-4" />
+          Download All
         </Button>
       </div>
 
-      {/* Filters Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Report Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="reportType">Report Type</Label>
-              <Select value={reportType} onValueChange={(value) => setReportType(value as ReportType)}>
-                <SelectTrigger id="reportType">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily Report</SelectItem>
-                  <SelectItem value="monthly">Monthly Report</SelectItem>
-                  <SelectItem value="alltime">All-Time Report</SelectItem>
-                  <SelectItem value="custom">Custom Date Range</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* Filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 border rounded-lg bg-muted/20">
+        <div className="space-y-1">
+          <Label>Date Range</Label>
+          <Select
+            value={dateFilter}
+            onValueChange={(v) => setDateFilter(v as DateFilter)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Today</SelectItem>
+              <SelectItem value="monthly">This Month</SelectItem>
+              <SelectItem value="all-time">All Time</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {dateFilter === "custom" && (
+          <>
+            <div className="space-y-1">
+              <Label>Start Date</Label>
+              <Input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+              />
             </div>
-
-            {(reportType === 'daily' || reportType === 'monthly') && (
-              <div className="space-y-2">
-                <Label htmlFor="selectedDate">Select Date</Label>
-                <Input
-                  id="selectedDate"
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  required
-                />
-              </div>
-            )}
-
-            {reportType === 'custom' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endDate">End Date</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    required
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="clientFilter">Client</Label>
-              <Select value={selectedClient} onValueChange={setSelectedClient}>
-                <SelectTrigger id="clientFilter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_CLIENTS}>All Clients</SelectItem>
-                  {allClients.map((client) => (
-                    <SelectItem key={client.name} value={client.name}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-1">
+              <Label>End Date</Label>
+              <Input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+              />
             </div>
+          </>
+        )}
 
-            <div className="space-y-2">
-              <Label htmlFor="siteFilter">Site</Label>
-              <Select value={selectedSite} onValueChange={setSelectedSite}>
-                <SelectTrigger id="siteFilter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_SITES}>All Sites</SelectItem>
-                  {allSites.map((site) => (
-                    <SelectItem key={site} value={site}>
-                      {site}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="space-y-1">
+          <Label>Client</Label>
+          <Select value={clientFilter} onValueChange={setClientFilter}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_CLIENTS}>All Clients</SelectItem>
+              {clientNames.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="statusFilter">Status</Label>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger id="statusFilter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_STATUS}>All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="returned">Returned</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+        <div className="space-y-1">
+          <Label>Site</Label>
+          <Select value={siteFilter} onValueChange={setSiteFilter}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_SITES}>All Sites</SelectItem>
+              {siteNames.map((site) => (
+                <SelectItem key={site} value={site}>
+                  {site}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          {dateValidationError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{dateValidationError}</AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Rent</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{summary.totalRent.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Received</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">₹{summary.totalReceived.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Outstanding</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">₹{summary.outstanding.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Advance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">₹{summary.advance.toFixed(2)}</div>
-          </CardContent>
-        </Card>
+        <div className="space-y-1">
+          <Label>Challan Status</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_STATUSES}>All Statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="returned">Returned</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Detailed Tables */}
-      <Tabs defaultValue="challans" className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="border rounded-lg p-4 bg-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+            Total Rent
+          </p>
+          <p className="text-xl font-bold mt-1">{formatCurrency(totalRent)}</p>
+        </div>
+        <div className="border rounded-lg p-4 bg-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+            Total Payments
+          </p>
+          <p className="text-xl font-bold mt-1">
+            {formatCurrency(totalPayments)}
+          </p>
+        </div>
+        <div className="border rounded-lg p-4 bg-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+            Cash Received
+          </p>
+          <p className="text-xl font-bold mt-1">
+            {formatCurrency(cashReceived)}
+          </p>
+        </div>
+        <div className="border rounded-lg p-4 bg-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+            Online Received
+          </p>
+          <p className="text-xl font-bold mt-1">
+            {formatCurrency(onlineReceived)}
+          </p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="challans">
         <TabsList>
-          <TabsTrigger value="challans">Challans ({filteredData.challans.length})</TabsTrigger>
-          <TabsTrigger value="payments">Payments ({filteredData.payments.length})</TabsTrigger>
-          <TabsTrigger value="pettycash">Petty Cash ({filteredData.pettyCash.length})</TabsTrigger>
-          <TabsTrigger value="clients">Client Summary ({clientSummary.length})</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory Usage ({inventoryUsage.length})</TabsTrigger>
+          <TabsTrigger value="challans">
+            Challans ({filteredChallans.length})
+          </TabsTrigger>
+          <TabsTrigger value="payments">
+            Payments ({filteredPayments.length})
+          </TabsTrigger>
+          <TabsTrigger value="petty-cash">
+            Petty Cash ({filteredPettyCash.length})
+          </TabsTrigger>
         </TabsList>
 
+        {/* Challans Tab */}
         <TabsContent value="challans">
-          <Card>
-            <CardHeader>
-              <CardTitle>Challans</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredData.challans.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No challans found for the selected filters.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Challan ID</TableHead>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Venue</TableHead>
-                        <TableHead>Rent Date</TableHead>
-                        <TableHead>Days</TableHead>
-                        <TableHead>Items</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredData.challans.map((challan) => {
-                        const itemsTotal = challan.items.reduce(
-                          (sum, item) => sum + (item.quantity * item.rate * item.rentalDays),
-                          0
-                        );
-                        const total = itemsTotal + challan.freight;
-                        const rentDate = nanoToDate(challan.rentDate);
-
-                        return (
-                          <TableRow key={challan.id}>
-                            <TableCell className="font-medium">{challan.id}</TableCell>
-                            <TableCell>{challan.clientName}</TableCell>
-                            <TableCell>{challan.venue}</TableCell>
-                            <TableCell>{rentDate.toLocaleDateString()}</TableCell>
-                            <TableCell>{challan.numberOfDays}</TableCell>
-                            <TableCell>{challan.items.length}</TableCell>
-                            <TableCell className="text-right">₹{total.toFixed(2)}</TableCell>
-                            <TableCell>
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                challan.returned ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-700'
-                              }`}>
-                                {challan.returned ? 'Returned' : 'Active'}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="border rounded-lg overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Challan ID</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Venue</TableHead>
+                  <TableHead>Rent Date</TableHead>
+                  <TableHead>Days</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredChallans.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="text-center text-muted-foreground py-8"
+                    >
+                      No challans found for the selected filters.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredChallans.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="font-mono text-sm">
+                        {c.id}
+                      </TableCell>
+                      <TableCell>{c.clientName}</TableCell>
+                      <TableCell>{c.venue || "—"}</TableCell>
+                      <TableCell>{formatDate(c.rentDate)}</TableCell>
+                      <TableCell>{c.numberOfDays}</TableCell>
+                      <TableCell>
+                        {formatCurrency(calculateChallanTotal(c))}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={c.returned ? "secondary" : "default"}>
+                          {c.returned ? "Returned" : "Active"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </TabsContent>
 
+        {/* Payments Tab */}
         <TabsContent value="payments">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredData.payments.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No payments found for the selected filters.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Payment ID</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Mode</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Reference</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredData.payments.map((payment) => {
-                        const paymentDate = nanoToDate(payment.date);
-
-                        return (
-                          <TableRow key={payment.id}>
-                            <TableCell className="font-medium">{payment.id}</TableCell>
-                            <TableCell>{paymentDate.toLocaleDateString()}</TableCell>
-                            <TableCell>{payment.client}</TableCell>
-                            <TableCell>
-                              <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-700">
-                                {payment.mode}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">₹{payment.amount.toFixed(2)}</TableCell>
-                            <TableCell>{payment.referenceNumber || '—'}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="border rounded-lg overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Payment ID</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Reference</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPayments.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="text-center text-muted-foreground py-8"
+                    >
+                      No payments found for the selected filters.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPayments.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-mono text-sm">
+                        {p.id}
+                      </TableCell>
+                      <TableCell>{p.client}</TableCell>
+                      <TableCell>{formatDate(p.date)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{p.mode}</Badge>
+                      </TableCell>
+                      <TableCell>{formatCurrency(p.amount)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {p.referenceNumber || "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </TabsContent>
 
-        <TabsContent value="pettycash">
-          <Card>
-            <CardHeader>
-              <CardTitle>Petty Cash</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredData.pettyCash.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No petty cash records found for the selected filters.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Opening Balance</TableHead>
-                        <TableHead className="text-right">Net Change</TableHead>
-                        <TableHead className="text-right">Closing Balance</TableHead>
+        {/* Petty Cash Tab */}
+        <TabsContent value="petty-cash">
+          <div className="border rounded-lg overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Opening Balance</TableHead>
+                  <TableHead>Cash from MD</TableHead>
+                  <TableHead>Transfer</TableHead>
+                  <TableHead>Cash Received</TableHead>
+                  <TableHead>Expenses</TableHead>
+                  <TableHead>Staff Advance</TableHead>
+                  <TableHead>Handover to MD</TableHead>
+                  <TableHead>Net Change</TableHead>
+                  <TableHead>Closing Balance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPettyCash.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={10}
+                      className="text-center text-muted-foreground py-8"
+                    >
+                      No petty cash records found for the selected filters.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPettyCash.map((r) => {
+                    const netChange = calculatePettyCashNetChange(r);
+                    return (
+                      <TableRow key={r.date.toString()}>
+                        <TableCell>{formatDate(r.date)}</TableCell>
+                        <TableCell>
+                          {formatCurrency(r.openingBalance)}
+                        </TableCell>
+                        <TableCell>{formatCurrency(r.cashFromMd)}</TableCell>
+                        <TableCell>
+                          {formatCurrency(r.transferFromCashEquivalents)}
+                        </TableCell>
+                        <TableCell>
+                          {formatCurrency(r.cashReceivedAuto)}
+                        </TableCell>
+                        <TableCell>{formatCurrency(r.expenses)}</TableCell>
+                        <TableCell>{formatCurrency(r.staffAdvance)}</TableCell>
+                        <TableCell>{formatCurrency(r.handoverToMd)}</TableCell>
+                        <TableCell
+                          className={
+                            netChange >= 0
+                              ? "text-green-600 font-medium"
+                              : "text-destructive font-medium"
+                          }
+                        >
+                          {formatCurrency(netChange)}
+                        </TableCell>
+                        <TableCell
+                          className={
+                            netChange >= 0
+                              ? "text-green-600 font-bold"
+                              : "text-destructive font-bold"
+                          }
+                        >
+                          {formatCurrency(netChange)}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredData.pettyCash.map((record) => {
-                        const recordDate = nanoToDate(record.date);
-
-                        return (
-                          <TableRow key={record.date.toString()}>
-                            <TableCell>{recordDate.toLocaleDateString()}</TableCell>
-                            <TableCell className="text-right">
-                              ₹{record.openingBalance.toFixed(2)}
-                            </TableCell>
-                            <TableCell className={`text-right ${
-                              record.netChange >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              ₹{record.netChange.toFixed(2)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              ₹{record.closingBalance.toFixed(2)}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="clients">
-          <Card>
-            <CardHeader>
-              <CardTitle>Client Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {clientSummary.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No client data found for the selected filters.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Client Name</TableHead>
-                        <TableHead className="text-right">Total Rent</TableHead>
-                        <TableHead className="text-right">Total Payments</TableHead>
-                        <TableHead className="text-right">Outstanding</TableHead>
-                        <TableHead className="text-right">Advance</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {clientSummary.map((client) => (
-                        <TableRow key={client.clientName}>
-                          <TableCell className="font-medium">{client.clientName}</TableCell>
-                          <TableCell className="text-right">₹{client.totalRent.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">₹{client.totalPayments.toFixed(2)}</TableCell>
-                          <TableCell className="text-right text-red-600">
-                            ₹{client.outstandingBalance.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right text-blue-600">
-                            ₹{client.advance.toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="inventory">
-          <Card>
-            <CardHeader>
-              <CardTitle>Inventory Usage</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {inventoryUsage.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No inventory usage found for the selected filters.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Item Name</TableHead>
-                        <TableHead className="text-right">Total Quantity</TableHead>
-                        <TableHead className="text-right">Issued Quantity</TableHead>
-                        <TableHead className="text-right">Daily Rate</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {inventoryUsage.map((item) => (
-                        <TableRow key={item.name}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell className="text-right">{item.totalQuantity}</TableCell>
-                          <TableCell className="text-right">{item.issuedQuantity}</TableCell>
-                          <TableCell className="text-right">₹{item.dailyRate.toFixed(2)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          {filteredPettyCash.length > 0 && (
+            <div className="mt-4 p-4 border rounded-lg bg-muted/20 flex flex-wrap gap-6 text-sm">
+              <div>
+                <span className="text-muted-foreground">Total Expenses: </span>
+                <span className="font-semibold">
+                  {formatCurrency(
+                    filteredPettyCash.reduce((s, r) => s + r.expenses, 0),
+                  )}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">
+                  Total Cash from MD:{" "}
+                </span>
+                <span className="font-semibold">
+                  {formatCurrency(
+                    filteredPettyCash.reduce((s, r) => s + r.cashFromMd, 0),
+                  )}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">
+                  Total Cash Received:{" "}
+                </span>
+                <span className="font-semibold">
+                  {formatCurrency(
+                    filteredPettyCash.reduce(
+                      (s, r) => s + r.cashReceivedAuto,
+                      0,
+                    ),
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -1,195 +1,202 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { ModalSelectContent } from '@/components/common/ModalSelectContent';
-import { useAddPayment, useClients } from '../../hooks/useQueries';
-import { dateToNano } from '../../utils/dates';
-import { toast } from 'sonner';
+} from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useAddPayment, useClients } from "../../hooks/useQueries";
+import { dateToNano, toDateInputValue } from "../../utils/dates";
+import ModalSelectContent from "../common/ModalSelectContent";
 
-interface PaymentFormDialogProps {
+interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-export default function PaymentFormDialog({ open, onClose }: PaymentFormDialogProps) {
-  const addPayment = useAddPayment();
-  const { data: clients, isLoading: clientsLoading } = useClients();
+const PAYMENT_MODES = [
+  "CASH",
+  "ONLINE",
+  "CHEQUE",
+  "UPI",
+  "BANK TRANSFER",
+  "OTHER",
+];
 
-  const [formData, setFormData] = useState({
-    id: '',
-    date: '',
-    client: '',
-    mode: '',
-    amount: '',
-    referenceNumber: '',
-    site: '',
-  });
+export default function PaymentFormDialog({ open, onClose }: Props) {
+  const addPayment = useAddPayment();
+  const { data: clients = [] } = useClients();
+
+  const [id, setId] = useState("");
+  const [date, setDate] = useState("");
+  const [client, setClient] = useState("");
+  const [mode, setMode] = useState("");
+  const [amount, setAmount] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
+  const [site, setSite] = useState("");
 
   useEffect(() => {
     if (open) {
-      setFormData({
-        id: '',
-        date: new Date().toISOString().split('T')[0],
-        client: '',
-        mode: '',
-        amount: '',
-        referenceNumber: '',
-        site: '',
-      });
+      const now = new Date();
+      setId(
+        `PAY${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${Math.floor(Math.random() * 9000) + 1000}`,
+      );
+      setDate(toDateInputValue(now));
+      setClient("");
+      setMode("");
+      setAmount("");
+      setReferenceNumber("");
+      setSite("");
     }
   }, [open]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    try {
-      await addPayment.mutateAsync({
-        id: formData.id,
-        date: dateToNano(new Date(formData.date)),
-        client: formData.client,
-        mode: formData.mode,
-        amount: parseFloat(formData.amount),
-        referenceNumber: formData.referenceNumber,
-        site: formData.site,
-      });
-
-      toast.success('Payment added successfully');
-      onClose();
-    } catch (error) {
-      console.error('Error adding payment:', error);
-      toast.error('Failed to add payment');
+    if (!client) {
+      toast.error("Please select a client");
+      return;
     }
+    if (!mode) {
+      toast.error("Please select a payment mode");
+      return;
+    }
+    if (!amount || Number.parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    addPayment.mutate(
+      {
+        id,
+        date: dateToNano(new Date(date)),
+        client,
+        mode,
+        amount: Number.parseFloat(amount),
+        referenceNumber,
+        site,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Payment added");
+          onClose();
+        },
+        onError: (e) => toast.error(`Failed: ${e.message}`),
+      },
+    );
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
       <DialogContent className="bg-background opacity-100 max-w-md">
         <DialogHeader>
           <DialogTitle>Add Payment</DialogTitle>
         </DialogHeader>
-
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="id">Payment ID *</Label>
+          <div className="space-y-1.5">
+            <Label>Payment ID</Label>
             <Input
-              id="id"
-              value={formData.id}
-              onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+              value={id}
+              onChange={(e) => setId(e.target.value)}
               required
             />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="date">Date *</Label>
-            <Input
-              id="date"
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Date</Label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Amount (₹)</Label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+              />
+            </div>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="client">Client *</Label>
-            <Select
-              value={formData.client}
-              onValueChange={(value) => setFormData({ ...formData, client: value })}
-              required
-            >
-              <SelectTrigger id="client">
+          <div className="space-y-1.5">
+            <Label>Client</Label>
+            <Select value={client} onValueChange={setClient}>
+              <SelectTrigger>
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
               <ModalSelectContent>
-                {clientsLoading ? (
-                  <SelectItem value="loading" disabled>
-                    Loading clients...
+                {clients.map((c) => (
+                  <SelectItem key={c.name} value={c.name}>
+                    {c.name}
                   </SelectItem>
-                ) : clients && clients.length > 0 ? (
-                  clients.map((client) => (
-                    <SelectItem key={client.name} value={client.name}>
-                      {client.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="no-clients" disabled>
-                    No clients available
-                  </SelectItem>
-                )}
+                ))}
               </ModalSelectContent>
             </Select>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="mode">Payment Mode *</Label>
-            <Select
-              value={formData.mode}
-              onValueChange={(value) => setFormData({ ...formData, mode: value })}
-              required
-            >
-              <SelectTrigger id="mode">
+          <div className="space-y-1.5">
+            <Label>Payment Mode</Label>
+            <Select value={mode} onValueChange={setMode}>
+              <SelectTrigger>
                 <SelectValue placeholder="Select mode" />
               </SelectTrigger>
               <ModalSelectContent>
-                <SelectItem value="CASH">Cash</SelectItem>
-                <SelectItem value="ONLINE">Online</SelectItem>
-                <SelectItem value="CHEQUE">Cheque</SelectItem>
+                {PAYMENT_MODES.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
               </ModalSelectContent>
             </Select>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount (₹) *</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Reference Number</Label>
+              <Input
+                value={referenceNumber}
+                onChange={(e) => setReferenceNumber(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Site</Label>
+              <Input
+                value={site}
+                onChange={(e) => setSite(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="referenceNumber">Reference Number</Label>
-            <Input
-              id="referenceNumber"
-              value={formData.referenceNumber}
-              onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
-              placeholder="Optional"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="site">Site</Label>
-            <Input
-              id="site"
-              value={formData.site}
-              onChange={(e) => setFormData({ ...formData, site: e.target.value })}
-              placeholder="Optional"
-            />
-          </div>
-
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={addPayment.isPending}>
-              {addPayment.isPending ? 'Adding...' : 'Add Payment'}
+              {addPayment.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              Add Payment
             </Button>
           </DialogFooter>
         </form>

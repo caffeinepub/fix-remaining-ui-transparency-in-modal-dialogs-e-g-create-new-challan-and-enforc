@@ -1,12 +1,6 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Plus, Upload } from 'lucide-react';
-import { usePayments } from '../hooks/useQueries';
-import { useStaffRestrictions } from '../hooks/useStaffRestrictions';
-import PaymentFormDialog from '../components/payments/PaymentFormDialog';
-import PaymentBulkUploadDialog from '../components/payments/PaymentBulkUploadDialog';
-import { formatCurrency, formatDate } from '../utils/dates';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -14,74 +8,78 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import QueryErrorState from '../components/common/QueryErrorState';
-import { toast } from 'sonner';
+} from "@/components/ui/table";
+import { CreditCard, Plus, Upload } from "lucide-react";
+import React, { useState } from "react";
+import { PaymentBulkUploadDialog } from "../components/payments/PaymentBulkUploadDialog";
+import PaymentFormDialog from "../components/payments/PaymentFormDialog";
+import { usePayments } from "../hooks/useQueries";
+import { useStaffRestrictions } from "../hooks/useStaffRestrictions";
+import { formatCurrency, formatDate, nanoToDate } from "../utils/dates";
+
+function getPaymentModeVariant(
+  mode: string,
+): "default" | "secondary" | "outline" | "destructive" {
+  switch (mode.toLowerCase()) {
+    case "cash":
+      return "default";
+    case "online":
+    case "upi":
+      return "secondary";
+    default:
+      return "outline";
+  }
+}
 
 export default function PaymentsPage() {
-  const { data: payments, isLoading, error, refetch } = usePayments();
-  const { canBulkUpload, disabledReason } = useStaffRestrictions();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const { data: payments = [], isLoading } = usePayments();
+  const { canBulkUpload } = useStaffRestrictions();
+  const [formOpen, setFormOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
-  const handleBulkUploadClick = () => {
-    if (!canBulkUpload) {
-      toast.error(disabledReason || 'Bulk upload is not available');
-      return;
-    }
-    setIsBulkUploadOpen(true);
-  };
-
-  if (error) {
-    return <QueryErrorState error={error} onRetry={refetch} />;
-  }
-
-  const getPaymentModeColor = (mode: string) => {
-    switch (mode.toLowerCase()) {
-      case 'cash':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'upi':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'bank transfer':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'cheque':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
+  const sorted = [...payments].sort((a, b) => Number(b.date - a.date));
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-3xl font-bold">Payments</h1>
-          <p className="text-gray-600 mt-1">Manage all payment records</p>
+          <h1 className="text-2xl font-bold">Payments</h1>
+          <p className="text-sm text-muted-foreground">
+            {payments.length} records
+          </p>
         </div>
         <div className="flex gap-2">
           {canBulkUpload && (
             <Button
-              onClick={handleBulkUploadClick}
               variant="outline"
-              className="gap-2"
+              size="sm"
+              onClick={() => setBulkOpen(true)}
             >
-              <Upload className="h-4 w-4" />
+              <Upload className="w-4 h-4 mr-1.5" />
               Bulk Upload
             </Button>
           )}
-          <Button onClick={() => setIsFormOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
+          <Button size="sm" onClick={() => setFormOpen(true)}>
+            <Plus className="w-4 h-4 mr-1.5" />
             Add Payment
           </Button>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">Loading payments...</p>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length skeleton list
+            <Skeleton key={i} className="h-12" />
+          ))}
         </div>
-      ) : payments && payments.length > 0 ? (
-        <div className="bg-white rounded-lg border shadow-sm">
+      ) : sorted.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">No payments yet</p>
+        </div>
+      ) : (
+        <div className="rounded-lg border overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -89,40 +87,50 @@ export default function PaymentsPage() {
                 <TableHead>Client</TableHead>
                 <TableHead>Mode</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Reference Number</TableHead>
+                <TableHead>Reference</TableHead>
+                <TableHead>Site</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {payments.map((payment) => (
+              {sorted.map((payment) => (
                 <TableRow key={payment.id}>
-                  <TableCell>{formatDate(new Date(Number(payment.date) / 1_000_000))}</TableCell>
-                  <TableCell className="font-medium">{payment.client}</TableCell>
+                  <TableCell className="text-sm">
+                    {formatDate(nanoToDate(payment.date))}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {payment.client}
+                  </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={getPaymentModeColor(payment.mode)}>
+                    <Badge
+                      variant={getPaymentModeVariant(payment.mode)}
+                      className="text-xs"
+                    >
                       {payment.mode}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-semibold">
                     {formatCurrency(payment.amount)}
                   </TableCell>
-                  <TableCell className="text-gray-600">{payment.referenceNumber || '—'}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {payment.referenceNumber || "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {payment.site || "—"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
-      ) : (
-        <div className="text-center py-12 bg-white rounded-lg border">
-          <p className="text-gray-500">No payments found</p>
-          <Button onClick={() => setIsFormOpen(true)} className="mt-4">
-            Add Your First Payment
-          </Button>
-        </div>
       )}
 
-      <PaymentFormDialog open={isFormOpen} onClose={() => setIsFormOpen(false)} />
+      <PaymentFormDialog open={formOpen} onClose={() => setFormOpen(false)} />
       {canBulkUpload && (
-        <PaymentBulkUploadDialog open={isBulkUploadOpen} onClose={() => setIsBulkUploadOpen(false)} />
+        <PaymentBulkUploadDialog
+          open={bulkOpen}
+          onClose={() => setBulkOpen(false)}
+          existingPayments={payments}
+        />
       )}
     </div>
   );

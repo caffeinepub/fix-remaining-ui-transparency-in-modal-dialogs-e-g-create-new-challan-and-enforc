@@ -1,163 +1,146 @@
-import { parseCSV } from './csv';
-import { parseDateOnly, dateToNano } from './dates';
-import type { PettyCash, PettyCashCategory } from '../backend';
+import type { PettyCash } from "../backend";
+import { parseCSV } from "./csv";
+import { dateToNano, parseDateOnly } from "./dates";
 
-export interface ParsedPettyCashRow {
+export interface PettyCashPreviewRow {
+  rowNumber: number;
   date: string;
   openingBalance: string;
   cashFromMd: string;
+  transferFromCashEquivalents: string;
   expenses: string;
   staffAdvance: string;
   handoverToMd: string;
-  transferFromCashEquivalents: string;
-  categoryExpenses: string;
   remarks: string;
+  cashReceivedAuto: string;
 }
 
-interface ValidationResult {
+export interface PettyCashParseResult {
   valid: PettyCash[];
-  errors: Array<{ rowNumber: number; error: string; id?: string }>;
+  errors: Array<{ rowNumber: number; error: string }>;
+  preview: PettyCashPreviewRow[];
+}
+
+function parseNum(val: string): number {
+  if (!val || val.trim() === "") return 0;
+  const n = Number.parseFloat(val.replace(/,/g, ""));
+  return Number.isNaN(n) ? 0 : n;
 }
 
 export function parseAndValidatePettyCashCSV(
   csvText: string,
-  existingRecords: PettyCash[]
-): ValidationResult {
-  const parsed = parseCSV(csvText);
-  const allRows = [parsed.headers, ...parsed.rows];
-  
-  if (allRows.length === 0) {
-    return { valid: [], errors: [{ rowNumber: 0, error: 'CSV file is empty' }] };
-  }
-
-  const headers = allRows[0].map((h) => h.trim().toLowerCase());
-  const requiredHeaders = [
-    'date',
-    'opening balance',
-    'cash from md',
-    'expenses',
-    'staff advance',
-    'handover to md',
-    'transfer from cash equivalents',
-    'category expenses',
-    'remarks',
-  ];
-
-  const missingHeaders = requiredHeaders.filter((h) => !headers.includes(h));
-  if (missingHeaders.length > 0) {
-    return {
-      valid: [],
-      errors: [
-        {
-          rowNumber: 0,
-          error: `Missing required columns: ${missingHeaders.join(', ')}`,
-        },
-      ],
-    };
-  }
-
-  const dateIndex = headers.indexOf('date');
-  const openingBalanceIndex = headers.indexOf('opening balance');
-  const cashFromMdIndex = headers.indexOf('cash from md');
-  const expensesIndex = headers.indexOf('expenses');
-  const staffAdvanceIndex = headers.indexOf('staff advance');
-  const handoverToMdIndex = headers.indexOf('handover to md');
-  const transferIndex = headers.indexOf('transfer from cash equivalents');
-  const categoryExpensesIndex = headers.indexOf('category expenses');
-  const remarksIndex = headers.indexOf('remarks');
+  existingRecords: PettyCash[],
+): PettyCashParseResult {
+  const result = parseCSV(csvText);
+  const rows = result.rows;
+  const headers = result.headers.map((h) => h.toLowerCase().trim());
 
   const valid: PettyCash[] = [];
-  const errors: Array<{ rowNumber: number; error: string; id?: string }> = [];
+  const errors: Array<{ rowNumber: number; error: string }> = [];
+  const preview: PettyCashPreviewRow[] = [];
 
   const existingDates = new Set(existingRecords.map((r) => r.date.toString()));
 
-  for (let i = 1; i < allRows.length; i++) {
-    const row = allRows[i];
-    const rowNumber = i + 1;
+  const getCol = (row: string[], name: string): string => {
+    const idx = headers.indexOf(name.toLowerCase());
+    return idx >= 0 ? (row[idx] || "").trim() : "";
+  };
 
-    try {
-      const dateStr = row[dateIndex]?.trim();
-      if (!dateStr) {
-        errors.push({ rowNumber, error: 'Date is required' });
-        continue;
-      }
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowNumber = i + 2; // 1-indexed, +1 for header
 
-      const parsedDate = parseDateOnly(dateStr);
-      if (!parsedDate) {
-        errors.push({ rowNumber, error: `Invalid date format: ${dateStr}` });
-        continue;
-      }
+    const dateStr = getCol(row, "date");
+    const openingBalanceStr =
+      getCol(row, "opening balance") || getCol(row, "openingbalance");
+    const cashFromMdStr =
+      getCol(row, "cash from md") || getCol(row, "cashfrommd");
+    const transferStr =
+      getCol(row, "transfer from cash equivalents") ||
+      getCol(row, "transferfromcashequivalents") ||
+      getCol(row, "transfer");
+    const expensesStr = getCol(row, "expenses");
+    const staffAdvanceStr =
+      getCol(row, "staff advance") || getCol(row, "staffadvance");
+    const handoverStr =
+      getCol(row, "handover to md") ||
+      getCol(row, "handovertomd") ||
+      getCol(row, "handover");
+    const remarksStr = getCol(row, "remarks");
+    const cashReceivedAutoStr =
+      getCol(row, "cash received auto") ||
+      getCol(row, "cashreceivedauto") ||
+      "0";
 
-      const dateNano = dateToNano(parsedDate);
+    preview.push({
+      rowNumber,
+      date: dateStr,
+      openingBalance: openingBalanceStr,
+      cashFromMd: cashFromMdStr,
+      transferFromCashEquivalents: transferStr,
+      expenses: expensesStr,
+      staffAdvance: staffAdvanceStr,
+      handoverToMd: handoverStr,
+      remarks: remarksStr,
+      cashReceivedAuto: cashReceivedAutoStr,
+    });
 
-      if (existingDates.has(dateNano.toString())) {
-        errors.push({
-          rowNumber,
-          error: `Petty cash record already exists for date: ${dateStr}`,
-          id: dateStr,
-        });
-        continue;
-      }
-
-      const openingBalance = parseFloat(row[openingBalanceIndex]?.trim() || '0');
-      const cashFromMd = parseFloat(row[cashFromMdIndex]?.trim() || '0');
-      const expenses = parseFloat(row[expensesIndex]?.trim() || '0');
-      const staffAdvance = parseFloat(row[staffAdvanceIndex]?.trim() || '0');
-      const handoverToMd = parseFloat(row[handoverToMdIndex]?.trim() || '0');
-      const transferFromCashEquivalents = parseFloat(row[transferIndex]?.trim() || '0');
-
-      if (isNaN(openingBalance) || isNaN(cashFromMd) || isNaN(expenses) || isNaN(staffAdvance) || isNaN(handoverToMd) || isNaN(transferFromCashEquivalents)) {
-        errors.push({ rowNumber, error: 'Invalid numeric value in one or more fields' });
-        continue;
-      }
-
-      const categoryExpensesStr = row[categoryExpensesIndex]?.trim() || '';
-      const categoryExpenses = parseCategoryExpenses(categoryExpensesStr);
-
-      const remarks = row[remarksIndex]?.trim() || '';
-
-      const netChange = cashFromMd - expenses - staffAdvance - handoverToMd;
-      const closingBalance = openingBalance + netChange;
-
-      const record: PettyCash = {
-        date: dateNano,
-        openingBalance,
-        cashFromMd,
-        expenses,
-        staffAdvance,
-        handoverToMd,
-        netChange,
-        closingBalance,
-        transferFromCashEquivalents,
-        categoryExpenses,
-        remarks,
-        createdAt: dateToNano(new Date()),
-      };
-
-      valid.push(record);
-    } catch (error: any) {
-      errors.push({ rowNumber, error: error.message || 'Unknown error' });
+    if (!dateStr) {
+      errors.push({ rowNumber, error: "Date is required" });
+      continue;
     }
+
+    const parsedDate = parseDateOnly(dateStr);
+    if (!parsedDate) {
+      errors.push({ rowNumber, error: `Invalid date format: "${dateStr}"` });
+      continue;
+    }
+
+    const dateBigint = dateToNano(parsedDate);
+    if (existingDates.has(dateBigint.toString())) {
+      errors.push({
+        rowNumber,
+        error: `Petty cash record already exists for date: ${dateStr}`,
+      });
+      continue;
+    }
+
+    const openingBalance = parseNum(openingBalanceStr);
+    const cashFromMd = parseNum(cashFromMdStr);
+    const transferFromCashEquivalents = parseNum(transferStr);
+    const expenses = parseNum(expensesStr);
+    const staffAdvance = parseNum(staffAdvanceStr);
+    const handoverToMd = parseNum(handoverStr);
+    const cashReceivedAuto = parseNum(cashReceivedAutoStr);
+
+    const netChange =
+      openingBalance +
+      cashFromMd +
+      transferFromCashEquivalents +
+      cashReceivedAuto -
+      expenses -
+      staffAdvance -
+      handoverToMd;
+
+    const record: PettyCash = {
+      date: dateBigint,
+      openingBalance,
+      cashFromMd,
+      transferFromCashEquivalents,
+      expenses,
+      staffAdvance,
+      handoverToMd,
+      netChange,
+      closingBalance: netChange,
+      categoryExpenses: [], // Always empty - category expenses removed
+      remarks: remarksStr,
+      cashReceivedAuto,
+      createdAt: dateToNano(new Date()),
+    };
+
+    valid.push(record);
+    existingDates.add(dateBigint.toString());
   }
 
-  return { valid, errors };
-}
-
-function parseCategoryExpenses(str: string): PettyCashCategory[] {
-  if (!str) return [];
-
-  const categories: PettyCashCategory[] = [];
-  const pairs = str.split(';').map((s) => s.trim()).filter(Boolean);
-
-  for (const pair of pairs) {
-    const [title, amountStr] = pair.split(':').map((s) => s.trim());
-    if (title && amountStr) {
-      const amount = parseFloat(amountStr);
-      if (!isNaN(amount)) {
-        categories.push({ title, amount });
-      }
-    }
-  }
-
-  return categories;
+  return { valid, errors, preview };
 }

@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -6,9 +6,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { useInternetIdentity } from '../../hooks/useInternetIdentity';
-import { Loader2 } from 'lucide-react';
+} from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
+import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 
 interface SignInRequiredDialogProps {
   open: boolean;
@@ -18,7 +18,10 @@ interface SignInRequiredDialogProps {
 /**
  * Dialog prompting the user to sign in via Internet Identity before performing restricted actions.
  */
-export default function SignInRequiredDialog({ open, onClose }: SignInRequiredDialogProps) {
+export default function SignInRequiredDialog({
+  open,
+  onClose,
+}: SignInRequiredDialogProps) {
   const { login, loginStatus } = useInternetIdentity();
 
   const handleLogin = async () => {
@@ -26,11 +29,11 @@ export default function SignInRequiredDialog({ open, onClose }: SignInRequiredDi
       await login();
       onClose();
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
     }
   };
 
-  const isLoggingIn = loginStatus === 'logging-in';
+  const isLoggingIn = loginStatus === "logging-in";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -52,7 +55,7 @@ export default function SignInRequiredDialog({ open, onClose }: SignInRequiredDi
                 Signing in...
               </>
             ) : (
-              'Sign In'
+              "Sign In"
             )}
           </Button>
         </DialogFooter>
